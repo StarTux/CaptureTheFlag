@@ -1,0 +1,36 @@
+main: com.cavetale.capturetheflag.CaptureTheFlagPlugin
+name: CaptureTheFlag
+
+version: ${version}
+api-version: 1.19
+
+author: StarTux
+website: https://github.com/StarTux/CaptureTheFlag
+description: CaptureTheFlag Plugin
+
+depend: [Core, Title, Area]
+softdepend: []
+
+commands:
+
+  capturetheflag:
+    aliases: [ctf]
+    description: CaptureTheFlag Command
+    permission: capturetheflag.capturetheflag
+    usage: /ctf
+
+  capturetheflagadmin:
+    aliases: [ctfadm]
+    description: Admin Command
+    permission: capturetheflag.admin
+    usage: /ctfadm
+
+permissions:
+
+  ctf.ctf:
+    description: Use /ctf
+    default: op
+
+  ctf.admin:
+    description: Use /ctfadm
+    default: op
