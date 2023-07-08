@@ -353,7 +353,7 @@ public final class Game {
                 Collection<BoundingBox> bbs = block.getRelative(0, -1, 0).getCollisionShape().getBoundingBoxes();
                 if (bbs.size() != 1) continue;
                 BoundingBox bb = bbs.iterator().next();
-                if (bb.getHeight() == 1.0 && bb.getWidthX() == 1.0 && bb.getWidthZ() == 1.0) {
+                if (bb.getWidthX() == 1.0 && bb.getWidthZ() == 1.0) {
                     result.add(vec);
                 }
             }
@@ -469,7 +469,7 @@ public final class Game {
         GamePlayer gamePlayer = getGamePlayer(player);
         if (gamePlayer == null) return;
         gamePlayer.setDead(true);
-        gamePlayer.setDeathTicks(200 + gamePlayer.getDeaths() * 100);
+        gamePlayer.setDeathTicks(200 + gamePlayer.getDeaths() * 200);
         gamePlayer.setDeaths(gamePlayer.getDeaths() + 1);
         GameTeam playerTeam = getTeam(player);
         if (playerTeam == null) return;
@@ -510,7 +510,7 @@ public final class Game {
         if (state != GameState.PLAY) return;
         if (event.getEntity().getKiller() == null) return;
         event.setDroppedExp(event.getDroppedExp() * 10);
-        event.getDrops().add(new ItemStack(Material.EMERALD));
+        event.getDrops().add(new ItemStack(Material.EMERALD, 1 + random.nextInt(3)));
     }
 
     public void onEntityDamage(EntityDamageEvent event) {
@@ -626,14 +626,20 @@ public final class Game {
                     gameFlag.teleport(location);
                 }
             }
-        } else if (gameFlag.getHolder() == null && !gameTeam.isFlagHome()) {
-            int noHolderTicks = gameFlag.getNoHolderTicks();
-            if (noHolderTicks > 20 * 30) {
-                gameTeam.resetFlag();
-                announce(text("The " + team.displayName + " flag has returned home", team.textColor));
-                log("The " + team.displayName + " flag has returned home");
-            } else {
-                gameFlag.setNoHolderTicks(noHolderTicks + 1);
+        } else {
+            assert gameFlag.getHolder() == null;
+            Location location = gameFlag.getEntity().getLocation();
+            location.setYaw((float) stateTicks * 4.5f);
+            gameFlag.teleport(location);
+            if (!gameTeam.isFlagHome()) {
+                int noHolderTicks = gameFlag.getNoHolderTicks();
+                if (noHolderTicks > 20 * 30) {
+                    gameTeam.resetFlag();
+                    announce(text("The " + team.displayName + " flag has returned home", team.textColor));
+                    log("The " + team.displayName + " flag has returned home");
+                } else {
+                    gameFlag.setNoHolderTicks(noHolderTicks + 1);
+                }
             }
         }
     }

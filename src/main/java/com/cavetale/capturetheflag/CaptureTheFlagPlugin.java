@@ -15,6 +15,7 @@ public final class CaptureTheFlagPlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        saveDefaultConfig();
         captureTheFlagCommand.enable();
         captureTheFlagAdminCommand.enable();
         eventListener.enable();
