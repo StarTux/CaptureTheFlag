@@ -10,6 +10,7 @@ import com.cavetale.core.struct.Cuboid;
 import com.cavetale.core.struct.Vec2i;
 import com.cavetale.core.struct.Vec3i;
 import com.cavetale.mytems.Mytems;
+import com.winthier.title.TitlePlugin;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -43,10 +44,12 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Guardian;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Villager;
 import org.bukkit.entity.Zombie;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
@@ -178,6 +181,7 @@ public final class Game {
         world.setGameRule(GameRule.KEEP_INVENTORY, true);
         world.setDifficulty(Difficulty.PEACEFUL);
         world.setTime(0L);
+        world.setPVP(true);
     }
 
     private void loadAreas() {
@@ -307,6 +311,7 @@ public final class Game {
             GamePlayer gamePlayer = gpList.get(i);
             gamePlayer.setGameTeam(gameTeam);
             gameTeam.getMembers().add(gamePlayer.getUuid());
+            TitlePlugin.getInstance().setColor(gamePlayer.getPlayer(), team.getTextColor());
         }
         for (GamePlayer gp : gpList) {
             Player player = gp.getPlayer();
@@ -773,11 +778,13 @@ public final class Game {
                                              EntityType.ENDERMAN,
                                              EntityType.SLIME,
                                              EntityType.WITHER_SKELETON,
-                                             EntityType.BLAZE);
+                                             EntityType.BLAZE,
+                                             EntityType.PILLAGER);
             EntityType et = types.get(random.nextInt(types.size()));
             Location location = block.getLocation().add(0.5, 1.0, 0.5);
             if (location.getNearbyEntitiesByType(Mob.class, 32.0).size() > 4) return null;
             return world.spawnEntity(location, et, SpawnReason.CUSTOM, e -> {
+                    if (e instanceof Mob mob) mob.setRemoveWhenFarAway(false);
                     if (e instanceof Zombie zombie) zombie.setShouldBurnInDay(false);
                     if (e instanceof AbstractSkeleton skeleton) skeleton.setShouldBurnInDay(false);
                 });
@@ -811,9 +818,11 @@ public final class Game {
     }
 
     public void onPlayerJoin(PlayerJoinEvent event) {
-        GamePlayer gamePlayer = getGamePlayer(event.getPlayer());
+        Player player = event.getPlayer();
+        GamePlayer gamePlayer = getGamePlayer(player);
         if (gamePlayer == null) {
-            event.getPlayer().setGameMode(GameMode.SPECTATOR);
+            player.setGameMode(GameMode.SPECTATOR);
+            TitlePlugin.getInstance().setColor(player, gamePlayer.getTeam().getTextColor());
         }
     }
 
@@ -823,6 +832,30 @@ public final class Game {
                 openMerchant(event.getPlayer(), mb.getType());
                 return;
             }
+        }
+    }
+
+    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        final Player damager;
+        if (event.getDamager() instanceof Player p) {
+            damager = p;
+        } else if (event.getDamager() instanceof Projectile p) {
+            if (p.getShooter() instanceof Player q) {
+                damager = q;
+            } else {
+                return;
+            }
+        } else {
+            return;
+        }
+        GamePlayer gamePlayer = getGamePlayer(player);
+        if (gamePlayer == null) return;
+        GamePlayer gameDamager = getGamePlayer(damager);
+        if (gameDamager == null) return;
+        if (gamePlayer.getTeam() == gameDamager.getTeam()) {
+            event.setCancelled(true);
+            return;
         }
     }
 }

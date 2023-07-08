@@ -17,6 +17,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
@@ -68,6 +69,12 @@ public final class EventListener implements Listener {
     private void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
         Game game = Game.of(event.getPlayer());
         if (game != null) game.onPlayerInteractEntity(event);
+    }
+
+    @EventHandler
+    private void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        Game game = Game.of(event.getEntity());
+        if (game != null) game.onEntityDamageByEntity(event);
     }
 
     @EventHandler
