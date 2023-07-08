@@ -21,3 +21,4 @@ Alias of `/capturetheflagadmin`
 - `game` Mark the game area(s) where chunks should be loaded
 - `spawn` Named `red` or `blue` to mark spawn areas of each team
 - `merchant` Named to mark where merchants should spawn
+

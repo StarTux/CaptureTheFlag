@@ -1,20 +1,43 @@
 package com.cavetale.capturetheflag;
 
 import com.cavetale.core.util.Json;
+import com.cavetale.fam.trophy.Highscore;
+import com.cavetale.mytems.item.trophy.TrophyCategory;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
+import lombok.Data;
+import net.kyori.adventure.text.Component;
 import static com.cavetale.capturetheflag.CaptureTheFlagPlugin.plugin;
+import static com.cavetale.core.font.Unicode.tiny;
+import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.Component.textOfChildren;
+import static net.kyori.adventure.text.format.NamedTextColor.*;
 
+@Data
 public final class Games {
+    private static Games instance;
     // Map actual loaded world name, NOT the map name
     private final Map<String, Game> gameMap = new HashMap<>();
     private File saveFile;
     private Save save;
     private List<String> mapNames = new ArrayList<>();
+    public static final Component TITLE = textOfChildren(text("CAPTURE", GOLD),
+                                                         text(tiny("the"), GRAY),
+                                                         text("FLAG", GOLD));
+    private List<Highscore> highscores = List.of();
+    private List<Component> highscoreLines = List.of();
+
+    protected Games() {
+        instance = this;
+    }
+
+    public static Games games() {
+        return instance;
+    }
 
     public void enable() {
         loadConfig();
@@ -57,5 +80,18 @@ public final class Games {
         }
         gameMap.put(game.getLoadedWorldName(), game);
         return true;
+    }
+
+    public void computeHighscores() {
+        highscores = Highscore.of(save.getScores());
+        highscoreLines = Highscore.sidebar(highscores, TrophyCategory.SWORD);
+    }
+
+    public int rewardScores() {
+        return Highscore.reward(save.getScores(),
+                                "capture_the_flag",
+                                TrophyCategory.SWORD,
+                                TITLE,
+                                hi -> "You earned a score of " + hi.score);
     }
 }

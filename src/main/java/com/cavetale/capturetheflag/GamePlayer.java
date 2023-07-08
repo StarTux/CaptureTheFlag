@@ -10,7 +10,7 @@ import org.bukkit.entity.Player;
 public final class GamePlayer {
     private final UUID uuid;
     private final String name;
-    private Team team;
+    private GameTeam gameTeam;
 
     public GamePlayer(final Player player) {
         this(player.getUniqueId(), player.getName());
@@ -18,5 +18,9 @@ public final class GamePlayer {
 
     public Player getPlayer() {
         return Bukkit.getPlayer(uuid);
+    }
+
+    public Team getTeam() {
+        return gameTeam.getTeam();
     }
 }
