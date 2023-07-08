@@ -72,6 +72,14 @@ public final class CaptureTheFlagAdminCommand extends AbstractCommand<CaptureThe
             .completers(CommandArgCompleter.enumLowerList(RecipeType.class),
                         CommandArgCompleter.integer(i -> i >= 0))
             .senderCaller(this::recipeRemove);
+        // Team
+        CommandNode teamNode = rootNode.addChild("team")
+            .description("Team commands");
+        teamNode.addChild("addscore").arguments("<team> <amount>")
+            .completers(CommandArgCompleter.enumLowerList(Team.class),
+                        CommandArgCompleter.integer(i -> i != 0))
+            .description("Change team score")
+            .senderCaller(this::teamAddScore);
     }
 
     private boolean start(CommandSender sender, String[] args) {
@@ -255,6 +263,26 @@ public final class CaptureTheFlagAdminCommand extends AbstractCommand<CaptureThe
                                           (b != null ? ItemKinds.chatDescription(b) : text("-", DARK_RED)),
                                           text(" -> ", GRAY),
                                           (c != null ? ItemKinds.chatDescription(c) : text("-", DARK_RED))));
+        return true;
+    }
+
+    private boolean teamAddScore(CommandSender sender, String[] args) {
+        if (args.length != 2) return false;
+        Team team = CommandArgCompleter.requireEnum(Team.class, args[0]);
+        int value = CommandArgCompleter.requireInt(args[1], i -> i != 0);
+        if (sender instanceof Player player) {
+            Game game = Game.of(player);
+            if (game == null) throw new CommandWarn("No game!");
+            GameTeam gameTeam = game.getTeamMap().get(team);
+            gameTeam.setScore(gameTeam.getScore() + value);
+            player.sendMessage(text(team + " score changed to " + gameTeam.getScore(), YELLOW));
+        } else {
+            for (Game game : List.copyOf(games().getGameMap().values())) {
+                GameTeam gameTeam = game.getTeamMap().get(team);
+                gameTeam.setScore(gameTeam.getScore() + value);
+                sender.sendMessage(text(team + " score changed to " + gameTeam.getScore(), YELLOW));
+            }
+        }
         return true;
     }
 }
