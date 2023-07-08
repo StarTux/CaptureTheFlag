@@ -33,6 +33,8 @@ public final class GameFlag {
     public void spawn(Location location) {
         this.entity = location.getWorld().spawn(location, ItemDisplay.class, e -> {
                 e.setItemStack(new ItemStack(team.getDyeMaterial()));
+                e.setGlowColorOverride(team.getColor());
+                e.setGlowing(true);
             });
         this.vector = Vec3i.of(location);
     }

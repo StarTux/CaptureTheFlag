@@ -3,8 +3,11 @@ package com.cavetale.capturetheflag;
 import com.cavetale.core.font.VanillaItems;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Color;
 import org.bukkit.Material;
+import static net.kyori.adventure.text.Component.text;
 
 @Getter @RequiredArgsConstructor
 public enum Team {
@@ -23,5 +26,13 @@ public enum Team {
             if (in.equals(team.key)) return team;
         }
         return null;
+    }
+
+    public Color getColor() {
+        return Color.fromRGB(textColor.value());
+    }
+
+    public Component displayComponent() {
+        return text(displayName, textColor);
     }
 }

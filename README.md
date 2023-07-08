@@ -22,3 +22,6 @@ Alias of `/capturetheflagadmin`
 - `spawn` Named `red` or `blue` to mark spawn areas of each team
 - `merchant` Named to mark where merchants should spawn
 
+## TODO
+
+- Merchants + commands

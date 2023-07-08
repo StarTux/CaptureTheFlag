@@ -11,6 +11,10 @@ public final class GamePlayer {
     private final UUID uuid;
     private final String name;
     private GameTeam gameTeam;
+    private boolean dead;
+    private int kills;
+    private int deaths;
+    private int deathTicks;
 
     public GamePlayer(final Player player) {
         this(player.getUniqueId(), player.getName());

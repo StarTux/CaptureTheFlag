@@ -32,6 +32,8 @@ import org.bukkit.GameMode;
 import org.bukkit.GameRule;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.AbstractSkeleton;
@@ -41,10 +43,13 @@ import org.bukkit.entity.Guardian;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Zombie;
+import org.bukkit.event.Cancellable;
 import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.BoundingBox;
@@ -75,8 +80,10 @@ public final class Game {
     private int ticks;
     private int stateTicks;
     private Component timeComponent = empty();
-    private BossBar bossbar = BossBar.bossBar(Games.TITLE, 1f, BossBar.Color.BLUE, BossBar.Overlay.PROGRESS);
+    private BossBar bossBar = BossBar.bossBar(Games.TITLE, 1f, BossBar.Color.BLUE, BossBar.Overlay.PROGRESS);
     private static final int GAME_TIME_TICKS = 20 * 20 * 60;
+    private boolean didScore;
+    private int didScoreCooldown;
 
     public Game(final String mapName) {
         this.mapName = mapName;
@@ -131,6 +138,10 @@ public final class Game {
         }
     }
 
+    public void log(String txt) {
+        plugin().getLogger().info("[" + loadedWorldName + "] " + txt);
+    }
+
     public void announce(Component text) {
         for (Player player : world.getPlayers()) {
             player.sendMessage(text);
@@ -147,14 +158,20 @@ public final class Game {
         this.world = Worlds.loadWorldCopy(mapName);
         if (world == null) throw new IllegalStateException("Loading world " + mapName);
         this.loadedWorldName = world.getName();
+        world.setGameRule(GameRule.DO_IMMEDIATE_RESPAWN, false);
         world.setGameRule(GameRule.NATURAL_REGENERATION, true);
-        world.setGameRule(GameRule.DO_FIRE_TICK, false);
+        world.setGameRule(GameRule.DO_FIRE_TICK, true);
+        world.setGameRule(GameRule.DO_ENTITY_DROPS, true);
+        world.setGameRule(GameRule.DO_MOB_LOOT, true);
+        world.setGameRule(GameRule.DO_MOB_SPAWNING, false);
         world.setGameRule(GameRule.DO_TILE_DROPS, true);
         world.setGameRule(GameRule.SHOW_DEATH_MESSAGES, true);
         world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, true);
         world.setGameRule(GameRule.DO_WEATHER_CYCLE, false);
         world.setGameRule(GameRule.MOB_GRIEFING, true);
+        world.setGameRule(GameRule.KEEP_INVENTORY, true);
         world.setDifficulty(Difficulty.PEACEFUL);
+        world.setTime(0L);
     }
 
     private void loadAreas() {
@@ -262,7 +279,9 @@ public final class Game {
         if (gp.getGameTeam() == null) throw new IllegalStateException("Player without team: " + gp);
         List<Vec3i> spawns = findSpawnLocations(gp.getTeam());
         Vec3i vec = spawns.get(random.nextInt(spawns.size()));
-        player.teleport(vec.toCenterFloorLocation(world));
+        Location location = vec.toCenterFloorLocation(world);
+        location.setYaw((float) random.nextDouble() * 360f);
+        player.teleport(location);
     }
 
     protected List<Vec3i> findSpawnLocations(Team team) {
@@ -307,9 +326,11 @@ public final class Game {
         switch (state) {
         case PLAY: {
             world.setDifficulty(Difficulty.HARD);
+            world.setGameRule(GameRule.RANDOM_TICK_SPEED, 3);
             for (Player player : world.getPlayers()) {
                 player.showTitle(title(text("Go!", GREEN), text("The game begins", GREEN)));
                 player.sendMessage(text("Go! The game begins", GREEN));
+                player.playSound(player.getLocation(), Sound.ITEM_GOAT_HORN_SOUND_2, SoundCategory.MASTER, 1f, 1f);
                 if (getGamePlayer(player) == null) continue;
                 player.setHealth(20.0);
                 player.setFoodLevel(20);
@@ -337,11 +358,19 @@ public final class Game {
                 winningTeam = Team.BLUE;
             }
             if (winningTeam == null) {
+                log("Draw");
                 announce(text("The game ends in a DRAW!", RED));
                 announceTitle(text("Draw!", RED), text("Neither team wins", RED));
+                for (Player player : world.getPlayers()) {
+                    player.playSound(player.getLocation(), Sound.ITEM_GOAT_HORN_SOUND_5, SoundCategory.MASTER, 1f, 1f);
+                }
             } else {
+                log(winningTeam.displayName + " wins");
                 announce(text("Team " + winningTeam.displayName + " wins the game!", winningTeam.textColor));
                 announceTitle(text(winningTeam.displayName, winningTeam.textColor), text("wins the game", winningTeam.textColor));
+                for (Player player : world.getPlayers()) {
+                    player.playSound(player.getLocation(), Sound.ITEM_GOAT_HORN_SOUND_1, SoundCategory.MASTER, 1f, 1f);
+                }
             }
             if (winningTeam != null && games().getSave().isEvent()) {
                 for (UUID uuid : teamMap.get(winningTeam).getMembers()) {
@@ -357,6 +386,11 @@ public final class Game {
 
     public void onPlayerHud(PlayerHudEvent event) {
         List<Component> sidebar = new ArrayList<>();
+        sidebar.add(Games.TITLE);
+        GamePlayer gamePlayer = getGamePlayer(event.getPlayer());
+        if (gamePlayer != null) {
+            sidebar.add(textOfChildren(text(tiny("your team "), GRAY), gamePlayer.getTeam().displayComponent()));
+        }
         sidebar.add(textOfChildren(text(tiny("time"), GRAY), space(), timeComponent));
         for (Team team : Team.values()) {
             GameTeam gameTeam = teamMap.get(team);
@@ -368,15 +402,24 @@ public final class Game {
                                        text(gameTeam.getScore(), team.textColor)));
         }
         event.sidebar(PlayerHudPriority.HIGH, sidebar);
+        event.bossbar(PlayerHudPriority.HIGH, bossBar);
     }
 
     public void onPlayerDeath(PlayerDeathEvent event) {
         if (state != GameState.PLAY) return;
         Player player = event.getPlayer();
+        GamePlayer gamePlayer = getGamePlayer(player);
+        if (gamePlayer == null) return;
+        gamePlayer.setDead(true);
+        gamePlayer.setDeathTicks(200 + gamePlayer.getDeaths() * 100);
+        gamePlayer.setDeaths(gamePlayer.getDeaths() + 1);
         GameTeam playerTeam = getTeam(player);
         if (playerTeam == null) return;
         Player killer = player.getKiller();
         if (killer == null) return;
+        GamePlayer gameKiller = getGamePlayer(killer);
+        if (gameKiller == null) return;
+        gameKiller.setKills(gameKiller.getKills() + 1);
         GameTeam killerTeam = getTeam(killer);
         if (killerTeam == null) return;
         if (playerTeam.getTeam() == killerTeam.getTeam()) return;
@@ -385,6 +428,23 @@ public final class Game {
             games().getSave().addScore(killer.getUniqueId(), 1);
             games().computeHighscores();
         }
+    }
+
+    public void onPlayerRespawn(PlayerRespawnEvent event) {
+        Player player = event.getPlayer();
+        GamePlayer gamePlayer = getGamePlayer(player);
+        if (gamePlayer == null) return;
+        List<Vec3i> spawns = findSpawnLocations(gamePlayer.getTeam());
+        Vec3i vec = spawns.get(random.nextInt(spawns.size()));
+        Location location = vec.toCenterFloorLocation(world);
+        location.setYaw((float) random.nextDouble() * 360f);
+        event.setRespawnLocation(location);
+        player.setGameMode(GameMode.SPECTATOR);
+        player.setHealth(20.0);
+        player.setFoodLevel(20);
+        player.setSaturation(20f);
+        player.setFireTicks(0);
+        player.setFallDistance(0f);
     }
 
     public void onEntityDeath(EntityDeathEvent event) {
@@ -418,6 +478,23 @@ public final class Game {
         if (ticksLeft <= 0) return GameState.PLAY;
         final int seconds = ticksLeft / 20;
         timeComponent = text(seconds, GREEN);
+        bossBar.name(textOfChildren(text("Countdown ", GRAY), timeComponent));
+        bossBar.progress(Math.max(0f, Math.min(1f, (float) stateTicks / (float) totalTicks)));
+        for (Player player : world.getPlayers()) {
+            GamePlayer gamePlayer = getGamePlayer(player);
+            if (gamePlayer == null) continue;
+            final Location location = player.getLocation();
+            final int x = location.getBlockX();
+            final int z = location.getBlockZ();
+            boolean isAtSpawn = false;
+            for (Cuboid spawn : gamePlayer.getGameTeam().getSpawns()) {
+                if (spawn.contains(x, spawn.ay, z)) {
+                    isAtSpawn = true;
+                    break;
+                }
+            }
+            if (!isAtSpawn) teleportToSpawn(player);
+        }
         return null;
     }
 
@@ -429,13 +506,32 @@ public final class Game {
             GamePlayer gamePlayer = getGamePlayer(player);
             if (gamePlayer != null) tickPlayer(player, gamePlayer);
         }
-        int seconds = (GAME_TIME_TICKS - stateTicks) / 20;
-        int minutes = seconds / 60;
+        final int ticksLeft = GAME_TIME_TICKS - stateTicks;
+        final int seconds = ticksLeft / 20;
+        final int minutes = seconds / 60;
         timeComponent = textOfChildren(text(minutes, GREEN), text("m", GRAY),
                                        space(),
                                        text((seconds % 60), GREEN), text("s", GRAY));
+        bossBar.name(textOfChildren(text("Play ", GREEN), timeComponent));
+        bossBar.progress(Math.max(0f, Math.min(1f, (float) ticksLeft / (float) GAME_TIME_TICKS)));
         if (stateTicks > GAME_TIME_TICKS) return GameState.END;
         spawnCreep();
+        if (didScore) {
+            if (didScoreCooldown > 0) {
+                didScoreCooldown -= 1;
+            } else {
+                didScore = false;
+                for (GameTeam gameTeam : teamMap.values()) {
+                    gameTeam.resetFlag();
+                }
+                for (Player player : world.getPlayers()) {
+                    GamePlayer gamePlayer = getGamePlayer(player);
+                    if (gamePlayer != null) {
+                        teleportToSpawn(player);
+                    }
+                }
+            }
+        }
         return null;
     }
 
@@ -447,13 +543,13 @@ public final class Game {
             gameFlag.spawn(gameTeam.getFlagSpawn().toCenterLocation(world));
             gameTeam.setGameFlag(gameFlag);
         } else if (!gameFlag.isValid()) {
-            gameFlag.disable();
-            gameTeam.setGameFlag(null);
+            gameTeam.resetFlag();
         } else if (gameFlag.getHolder() != null) {
             gameFlag.setNoHolderTicks(0);
             Player holder = Bukkit.getPlayer(gameFlag.getHolder());
-            if (holder == null || holder.isDead()) {
-                announce(text(PlayerCache.nameForUuid(gameFlag.getHolder()) + " dropped the " + team.displayName + " flag", YELLOW));
+            if (holder == null || holder.isDead() || holder.getGameMode() == GameMode.SPECTATOR) {
+                log(PlayerCache.nameForUuid(gameFlag.getHolder()) + " dropped the " + team.displayName + " flag");
+                announce(text(PlayerCache.nameForUuid(gameFlag.getHolder()) + " dropped the " + team.displayName + " flag", team.textColor));
                 gameFlag.setHolder(null);
             } else {
                 GamePlayer gameHolder = getGamePlayer(holder);
@@ -466,20 +562,50 @@ public final class Game {
                     gameFlag.teleport(location);
                 }
             }
-        } else if (gameFlag.getHolder() == null && !gameTeam.isFlagHome() && gameFlag.getNoHolderTicks() > 20 * 60) {
-            gameFlag.disable();
-            gameTeam.setGameFlag(null);
-            announce(text("The " + team.displayName + " flag returned home", YELLOW));
+        } else if (gameFlag.getHolder() == null && !gameTeam.isFlagHome()) {
+            int noHolderTicks = gameFlag.getNoHolderTicks();
+            if (noHolderTicks > 20 * 30) {
+                gameTeam.resetFlag();
+                announce(text("The " + team.displayName + " flag has returned home", team.textColor));
+                log("The " + team.displayName + " flag has returned home");
+            } else {
+                gameFlag.setNoHolderTicks(noHolderTicks + 1);
+            }
         }
     }
 
     private void tickPlayer(Player player, GamePlayer gamePlayer) {
-        tickPlayerBoundingBox(player, gamePlayer);
+        if (player.getGameMode() == GameMode.SPECTATOR) {
+            final int deathTicks = gamePlayer.getDeathTicks();
+            if (deathTicks > 0) {
+                gamePlayer.setDeathTicks(deathTicks - 1);
+                if (deathTicks % 20 == 0) {
+                    player.sendActionBar(textOfChildren(text("Respawn in ", GRAY),
+                                                        text(deathTicks / 20, GREEN),
+                                                        text("s", GRAY)));
+                }
+            } else {
+                assert deathTicks <= 0;
+                teleportToSpawn(player);
+                player.setHealth(20.0);
+                player.setFoodLevel(20);
+                player.setSaturation(20f);
+                player.setFireTicks(0);
+                player.setFallDistance(0f);
+                player.setGameMode(GameMode.SURVIVAL);
+            }
+        } else if (!didScore) {
+            tickPlayerBoundingBox(player, gamePlayer);
+        }
     }
 
+    /**
+     * Check if a flag was picked up or stolen.
+     */
     private void tickPlayerBoundingBox(Player player, GamePlayer gamePlayer) {
         final UUID uuid = player.getUniqueId();
-        final GameTeam playerTeam = gamePlayer.getGameTeam();
+        final GameTeam playerGameTeam = gamePlayer.getGameTeam();
+        final Team playerTeam = playerGameTeam.getTeam();
         GameFlag holdingFlag = null;
         for (GameTeam gameTeam : teamMap.values()) {
             GameFlag gameFlag = gameTeam.getGameFlag();
@@ -503,24 +629,35 @@ public final class Game {
                         GameTeam gameTeam = teamMap.get(team);
                         GameFlag gameFlag = gameTeam.getGameFlag();
                         if (gameFlag != null && gameFlag.getHolder() == null && gameFlag.getVector().equals(x, y, z)) {
-                            if (gameFlag.getTeam() == playerTeam.getTeam() && !gameTeam.isFlagHome()) {
+                            if (gameFlag.getTeam() == playerTeam && !gameTeam.isFlagHome()) {
                                 announce(text(player.getName() + " returned the " + team.displayName + " flag", YELLOW));
                                 gameFlag.disable();
                                 gameTeam.setGameFlag(null);
-                            } else if (gameFlag.getTeam() != playerTeam.getTeam()) {
+                                log(player.getName() + " returned the " + team.displayName + " flag");
+                            } else if (gameFlag.getTeam() != playerTeam) {
                                 announce(text(player.getName() + " picked up the " + team.displayName + " flag", YELLOW));
                                 gameFlag.setHolder(uuid);
+                                log(player.getName() + " picked up the " + team.displayName + " flag");
                             }
                         }
                     }
-                    if (holdingFlag != null && playerTeam.getFlagSpawn().equals(x, y, z) && playerTeam.isFlagHome()) {
-                        GameTeam gameTeam = teamMap.get(holdingFlag.getTeam());
+                    if (holdingFlag != null && playerGameTeam.getFlagSpawn().equals(x, y, z) && playerGameTeam.isFlagHome()) {
+                        Team holdingTeam = holdingFlag.getTeam();
+                        GameTeam gameTeam = teamMap.get(holdingTeam);
                         if (gameTeam.getGameFlag() != null) {
                             gameTeam.getGameFlag().disable();
                             gameTeam.setGameFlag(null);
                         }
-                        announce(text(player.getName() + " stole the " + holdingFlag.getTeam().displayName + " flag", playerTeam.getTeam().getTextColor()));
-                        playerTeam.setScore(playerTeam.getScore() + 1);
+                        log(player.getName() + " stole the " + holdingTeam.displayName + " flag");
+                        announce(text(player.getName() + " stole the " + holdingTeam.displayName + " flag", playerTeam.textColor));
+                        announceTitle(text(holdingTeam.displayName + " Flag", playerTeam.textColor),
+                                      text("Stolen by team " + playerTeam.displayName, playerTeam.textColor));
+                        for (Player target : world.getPlayers()) {
+                            target.playSound(target.getLocation(), Sound.ITEM_GOAT_HORN_SOUND_3, SoundCategory.MASTER, 1f, 1f);
+                        }
+                        didScore = true;
+                        didScoreCooldown = 100;
+                        playerGameTeam.setScore(playerGameTeam.getScore() + 1);
                         if (games().getSave().isEvent()) {
                             games().getSave().addScore(player.getUniqueId(), 10);
                             games().computeHighscores();
@@ -580,8 +717,33 @@ public final class Game {
 
     private GameState tickEnd() {
         if (stateTicks > 20 * 60) {
-            disable();
+            games().disable(this);
         }
         return null;
+    }
+
+    public void onBuild(Cancellable event, Player player, Block block) {
+        if (player.getGameMode() == GameMode.CREATIVE) return;
+        if (state != GameState.PLAY) {
+            event.setCancelled(true);
+            return;
+        }
+        final int x = block.getX();
+        final int z = block.getZ();
+        for (GameTeam gameTeam : teamMap.values()) {
+            for (Cuboid spawn : gameTeam.getSpawns()) {
+                if (spawn.contains(x, spawn.ay, z)) {
+                    event.setCancelled(true);
+                    return;
+                }
+            }
+        }
+    }
+
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        GamePlayer gamePlayer = getGamePlayer(event.getPlayer());
+        if (gamePlayer == null) {
+            event.getPlayer().setGameMode(GameMode.SPECTATOR);
+        }
     }
 }

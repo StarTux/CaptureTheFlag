@@ -25,9 +25,9 @@ public final class Games {
     private File saveFile;
     private Save save;
     private List<String> mapNames = new ArrayList<>();
-    public static final Component TITLE = textOfChildren(text("CAPTURE", GOLD),
+    public static final Component TITLE = textOfChildren(text("Capture", RED),
                                                          text(tiny("the"), GRAY),
-                                                         text("FLAG", GOLD));
+                                                         text("Flag", BLUE));
     private List<Highscore> highscores = List.of();
     private List<Component> highscoreLines = List.of();
 
@@ -44,6 +44,7 @@ public final class Games {
         CaptureTheFlagPlugin.plugin().getDataFolder().mkdirs();
         saveFile = new File(CaptureTheFlagPlugin.plugin().getDataFolder(), "save.json");
         load();
+        computeHighscores();
     }
 
     public void disable() {
@@ -93,5 +94,10 @@ public final class Games {
                                 TrophyCategory.SWORD,
                                 TITLE,
                                 hi -> "You earned a score of " + hi.score);
+    }
+
+    public void disable(Game game) {
+        Game game2 = gameMap.remove(game.getLoadedWorldName());
+        game.disable();
     }
 }

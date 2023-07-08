@@ -40,4 +40,10 @@ public final class GameTeam {
     public boolean isFlagHome() {
         return gameFlag == null || gameFlag.getVector().equals(flagSpawn);
     }
+
+    public void resetFlag() {
+        if (gameFlag == null) return;
+        gameFlag.disable();
+        gameFlag = null;
+    }
 }
