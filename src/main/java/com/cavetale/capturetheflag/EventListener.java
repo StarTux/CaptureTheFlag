@@ -9,6 +9,7 @@ import java.util.List;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
@@ -16,10 +17,12 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
@@ -142,5 +145,20 @@ public final class EventListener implements Listener {
     private void onBuild(Cancellable event, Player player, Block block) {
         Game game = Game.in(block.getWorld());
         if (game != null) game.onBuild(event, player, block);
+    }
+
+    @EventHandler
+    private void onBlockExplode(BlockExplodeEvent event) {
+        onExplode(event, event.getBlock().getWorld(), event.blockList());
+    }
+
+    @EventHandler
+    private void onEntityExplode(EntityExplodeEvent event) {
+        onExplode(event, event.getEntity().getWorld(), event.blockList());
+    }
+
+    private void onExplode(Cancellable event, World world, List<Block> blockList) {
+        Game game = Game.in(world);
+        if (game != null) game.onExplode(event, blockList);
     }
 }

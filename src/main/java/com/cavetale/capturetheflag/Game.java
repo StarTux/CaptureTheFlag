@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -822,6 +823,7 @@ public final class Game {
         GamePlayer gamePlayer = getGamePlayer(player);
         if (gamePlayer == null) {
             player.setGameMode(GameMode.SPECTATOR);
+        } else {
             TitlePlugin.getInstance().setColor(player, gamePlayer.getTeam().getTextColor());
         }
     }
@@ -856,6 +858,22 @@ public final class Game {
         if (gamePlayer.getTeam() == gameDamager.getTeam()) {
             event.setCancelled(true);
             return;
+        }
+    }
+
+    public void onExplode(Cancellable event, List<Block> blockList) {
+        for (Iterator<Block> iter = blockList.iterator(); iter.hasNext();) {
+            Block block = iter.next();
+            final int x = block.getX();
+            final int z = block.getZ();
+            OUTER: for (GameTeam gameTeam : teamMap.values()) {
+                for (Cuboid spawn : gameTeam.getSpawns()) {
+                    if (spawn.contains(x, spawn.ay, z)) {
+                        iter.remove();
+                        break OUTER;
+                    }
+                }
+            }
         }
     }
 }
