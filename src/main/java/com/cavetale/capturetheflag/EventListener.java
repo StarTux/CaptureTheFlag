@@ -20,6 +20,8 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
@@ -63,6 +65,12 @@ public final class EventListener implements Listener {
     }
 
     @EventHandler
+    private void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
+        Game game = Game.of(event.getPlayer());
+        if (game != null) game.onPlayerInteractEntity(event);
+    }
+
+    @EventHandler
     private void onPlayerRespawn(PlayerRespawnEvent event) {
         Game game = Game.of(event.getPlayer());
         if (game != null) game.onPlayerRespawn(event);
@@ -83,6 +91,12 @@ public final class EventListener implements Listener {
     @EventHandler
     private void onPlayerTPA(PlayerTPAEvent event) {
         Game game = Game.of(event.getTarget());
+        if (game != null) event.setCancelled(true);
+    }
+
+    @EventHandler
+    private void onPlayerItemDamage(PlayerItemDamageEvent event) {
+        Game game = Game.of(event.getPlayer());
         if (game != null) event.setCancelled(true);
     }
 

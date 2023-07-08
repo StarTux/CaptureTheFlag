@@ -23,7 +23,9 @@ public final class Games {
     // Map actual loaded world name, NOT the map name
     private final Map<String, Game> gameMap = new HashMap<>();
     private File saveFile;
+    private File recipeSaveFile;
     private Save save;
+    private RecipeSave recipeSave;
     private List<String> mapNames = new ArrayList<>();
     public static final Component TITLE = textOfChildren(text("Capture", RED),
                                                          text(tiny("the"), GRAY),
@@ -43,7 +45,9 @@ public final class Games {
         loadConfig();
         CaptureTheFlagPlugin.plugin().getDataFolder().mkdirs();
         saveFile = new File(CaptureTheFlagPlugin.plugin().getDataFolder(), "save.json");
+        recipeSaveFile = new File(CaptureTheFlagPlugin.plugin().getDataFolder(), "recipes.json");
         load();
+        loadRecipes();
         computeHighscores();
     }
 
@@ -64,6 +68,14 @@ public final class Games {
 
     public void save() {
         Json.save(saveFile, save, true);
+    }
+
+    public void loadRecipes() {
+        this.recipeSave = Json.load(recipeSaveFile, RecipeSave.class, RecipeSave::new);
+    }
+
+    public void saveRecipes() {
+        Json.save(recipeSaveFile, recipeSave, true);
     }
 
     public boolean startGame(String mapName) {

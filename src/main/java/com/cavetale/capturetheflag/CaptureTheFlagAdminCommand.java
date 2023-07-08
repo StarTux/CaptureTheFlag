@@ -4,12 +4,16 @@ import com.cavetale.core.command.AbstractCommand;
 import com.cavetale.core.command.CommandArgCompleter;
 import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
+import com.cavetale.core.item.ItemKinds;
 import com.cavetale.core.playercache.PlayerCache;
+import com.cavetale.mytems.util.Gui;
 import java.util.List;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import static com.cavetale.capturetheflag.Games.games;
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.Component.textOfChildren;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 public final class CaptureTheFlagAdminCommand extends AbstractCommand<CaptureTheFlagPlugin> {
@@ -47,6 +51,27 @@ public final class CaptureTheFlagAdminCommand extends AbstractCommand<CaptureThe
         scoreNode.addChild("reward").denyTabCompletion()
             .description("Reward players")
             .senderCaller(this::scoreReward);
+        // Recipe
+        CommandNode recipeNode = rootNode.addChild("recipe")
+            .description("Recipe commands");
+        recipeNode.addChild("list").arguments("<type>")
+            .description("List recipes")
+            .completers(CommandArgCompleter.enumLowerList(RecipeType.class))
+            .senderCaller(this::recipeList);
+        recipeNode.addChild("add").arguments("<type>")
+            .description("Add recipe")
+            .completers(CommandArgCompleter.enumLowerList(RecipeType.class))
+            .playerCaller(this::recipeAdd);
+        recipeNode.addChild("edit").arguments("<type> <index>")
+            .description("Edit recipe")
+            .completers(CommandArgCompleter.enumLowerList(RecipeType.class),
+                        CommandArgCompleter.integer(i -> i >= 0))
+            .playerCaller(this::recipeEdit);
+        recipeNode.addChild("remove").arguments("<type> <index>")
+            .description("Remove recipe")
+            .completers(CommandArgCompleter.enumLowerList(RecipeType.class),
+                        CommandArgCompleter.integer(i -> i >= 0))
+            .senderCaller(this::recipeRemove);
     }
 
     private boolean start(CommandSender sender, String[] args) {
@@ -123,5 +148,113 @@ public final class CaptureTheFlagAdminCommand extends AbstractCommand<CaptureThe
     private void scoreReward(CommandSender sender) {
         int count = games().rewardScores();
         sender.sendMessage(text("Rewarded " + count + " players", AQUA));
+    }
+
+    private boolean recipeList(CommandSender sender, String[] args) {
+        if (args.length != 1) return false;
+        RecipeType type = CommandArgCompleter.requireEnum(RecipeType.class, args[0]);
+        int nextIndex = 0;
+        for (Recipe recipe : games().getRecipeSave().get(type)) {
+            int index = nextIndex++;
+            List<ItemStack> items = recipe.getItems();
+            ItemStack a = items.get(0);
+            ItemStack b = items.get(1);
+            ItemStack c = items.get(2);
+            sender.sendMessage(textOfChildren(text(index + ") ", YELLOW),
+                                              (a != null ? ItemKinds.chatDescription(a) : text("-", DARK_RED)),
+                                              text(" + ", GRAY),
+                                              (b != null ? ItemKinds.chatDescription(b) : text("-", DARK_RED)),
+                                              text(" -> ", GRAY),
+                                              (c != null ? ItemKinds.chatDescription(c) : text("-", DARK_RED))));
+        }
+        sender.sendMessage(text(nextIndex + " total recipes: " + type, YELLOW));
+        return true;
+    }
+
+    private boolean recipeAdd(Player player, String[] args) {
+        if (args.length != 1) return false;
+        final RecipeType type = CommandArgCompleter.requireEnum(RecipeType.class, args[0]);
+        final Gui gui = new Gui(plugin).rows(1).title(text("Add recipe " + type));
+        gui.setEditable(true);
+        gui.onClose(close -> {
+                ItemStack a = gui.getInventory().getItem(0);
+                ItemStack b = gui.getInventory().getItem(1);
+                ItemStack c = gui.getInventory().getItem(2);
+                if (a == null || c == null) {
+                    player.sendMessage(text("No recipe created", RED));
+                    return;
+                }
+                Recipe recipe = new Recipe();
+                recipe.setItems(a, b, c);
+                games().getRecipeSave().get(type).add(recipe);
+                games().saveRecipes();
+                player.sendMessage(textOfChildren(text("Recipe created: ", YELLOW),
+                                                  (a != null ? ItemKinds.chatDescription(a) : text("-", DARK_RED)),
+                                                  text(" + ", GRAY),
+                                                  (b != null ? ItemKinds.chatDescription(b) : text("-", DARK_RED)),
+                                                  text(" -> ", GRAY),
+                                                  (c != null ? ItemKinds.chatDescription(c) : text("-", DARK_RED))));
+            });
+        gui.open(player);
+        return true;
+    }
+
+    private boolean recipeEdit(Player player, String[] args) {
+        if (args.length != 2) return false;
+        final RecipeType type = CommandArgCompleter.requireEnum(RecipeType.class, args[0]);
+        final int index = CommandArgCompleter.requireInt(args[1], i -> i >= 0);
+        if (index >= games().getRecipeSave().get(type).size()) {
+            throw new CommandWarn("Index out of bounds: " + index);
+        }
+        final Recipe recipe = games().getRecipeSave().get(type).get(index);
+        List<ItemStack> items = recipe.getItems();
+        final Gui gui = new Gui(plugin).rows(1).title(text("Add recipe " + type));
+        gui.setEditable(true);
+        for (int i = 0; i < 3; i += 1) {
+            gui.setItem(i, items.get(i));
+        }
+        gui.onClose(close -> {
+                ItemStack a = gui.getInventory().getItem(0);
+                ItemStack b = gui.getInventory().getItem(1);
+                ItemStack c = gui.getInventory().getItem(2);
+                if (a == null || c == null) {
+                    player.sendMessage(text("Recipe not edited", RED));
+                    return;
+                }
+                recipe.setItems(a, b, c);
+                games().saveRecipes();
+                player.sendMessage(textOfChildren(text("Recipe edited: ", YELLOW),
+                                                  text(index + ") ", YELLOW),
+                                                  (a != null ? ItemKinds.chatDescription(a) : text("-", DARK_RED)),
+                                                  text(" + ", GRAY),
+                                                  (b != null ? ItemKinds.chatDescription(b) : text("-", DARK_RED)),
+                                                  text(" -> ", GRAY),
+                                                  (c != null ? ItemKinds.chatDescription(c) : text("-", DARK_RED))));
+            });
+        gui.open(player);
+        return true;
+    }
+
+    private boolean recipeRemove(CommandSender sender, String[] args) {
+        if (args.length != 2) return false;
+        final RecipeType type = CommandArgCompleter.requireEnum(RecipeType.class, args[0]);
+        final int index = CommandArgCompleter.requireInt(args[1], i -> i >= 0);
+        if (index >= games().getRecipeSave().get(type).size()) {
+            throw new CommandWarn("Index out of bounds: " + index);
+        }
+        final Recipe recipe = games().getRecipeSave().get(type).remove(index);
+        games().saveRecipes();
+        List<ItemStack> items = recipe.getItems();
+        final ItemStack a = items.get(0);
+        final ItemStack b = items.get(1);
+        final ItemStack c = items.get(2);
+        sender.sendMessage(textOfChildren(text("Recipe removed: ", YELLOW),
+                                          text(index + ") ", YELLOW),
+                                          (a != null ? ItemKinds.chatDescription(a) : text("-", DARK_RED)),
+                                          text(" + ", GRAY),
+                                          (b != null ? ItemKinds.chatDescription(b) : text("-", DARK_RED)),
+                                          text(" -> ", GRAY),
+                                          (c != null ? ItemKinds.chatDescription(c) : text("-", DARK_RED))));
+        return true;
     }
 }

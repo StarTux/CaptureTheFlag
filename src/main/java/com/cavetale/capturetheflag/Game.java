@@ -35,6 +35,7 @@ import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
 import org.bukkit.entity.AbstractSkeleton;
 import org.bukkit.entity.Entity;
@@ -42,15 +43,19 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Guardian;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Villager;
 import org.bukkit.entity.Zombie;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.Merchant;
+import org.bukkit.inventory.MerchantRecipe;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
@@ -71,7 +76,7 @@ public final class Game {
     private World world;
     private List<Cuboid> gameAreas = new ArrayList<>();
     private List<Cuboid> creepAreas = new ArrayList<>();
-    private Map<Vec3i, String> merchantBlocks = new HashMap<>();
+    private List<MerchantBlock> merchantBlocks = new ArrayList<>();
     private BukkitTask task;
     private Map<UUID, GamePlayer> playerMap = new HashMap<>();
     private Map<Team, GameTeam> teamMap = new EnumMap<>(Team.class);
@@ -107,6 +112,7 @@ public final class Game {
         }
         loadAreas();
         loadChunks();
+        spawnMerchants();
         makeTeams();
         this.task = Bukkit.getScheduler().runTaskTimer(plugin(), this::tick, 1L, 1L);
         this.state = GameState.COUNTDOWN;
@@ -206,7 +212,12 @@ public final class Game {
                 plugin().getLogger().severe("Merchant without name: " + area);
                 continue;
             }
-            merchantBlocks.put(area.getMin(), area.getName());
+            RecipeType type = RecipeType.of(area.getName());
+            if (type == null) {
+                plugin().getLogger().severe("Merchant with invalid type: " + area.getName());
+                continue;
+            }
+            merchantBlocks.add(new MerchantBlock(area.getMin(), type));
         }
         if (gameAreas.isEmpty()) throw new IllegalStateException("No 'game' areas!");
         if (creepAreas.isEmpty()) throw new IllegalStateException("No 'creep' areas!");
@@ -217,6 +228,18 @@ public final class Game {
             }
             if (gameTeam.getFlagSpawn() == null) {
                 throw new IllegalStateException("No flag for team: " + team);
+            }
+        }
+        Map<RecipeType, Integer> merchantCounts = new EnumMap<>(RecipeType.class);
+        for (MerchantBlock mb : merchantBlocks) {
+            merchantCounts.put(mb.getType(), merchantCounts.getOrDefault(mb.getType(), 0) + 1);
+        }
+        for (RecipeType type : RecipeType.values()) {
+            int count = merchantCounts.getOrDefault(type, 0);
+            if (count == 0) {
+                plugin().getLogger().severe("Merchant missing: " + type);
+            } else {
+                log("Merchant " + type + ": " + count);
             }
         }
     }
@@ -234,6 +257,40 @@ public final class Game {
         for (Vec2i vec : vecs) {
             world.getChunkAtAsync(vec.x, vec.z, (Consumer<Chunk>) chunk -> chunk.addPluginChunkTicket(plugin()));
         }
+    }
+
+    private void spawnMerchants() {
+        for (MerchantBlock merchantBlock : merchantBlocks) {
+            Villager villager = merchantBlock.getEntity();
+            if (villager != null && !villager.isDead()) continue;
+            villager = world.spawn(merchantBlock.getVector().toCenterFloorLocation(world), Villager.class, e -> {
+                    e.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0.0);
+                    e.setProfession(merchantBlock.getType().getProfession());
+                    e.setVillagerLevel(5);
+                    e.setRecipes(List.of());
+                    e.setCollidable(false);
+                });
+            merchantBlock.setEntity(villager);
+        }
+    }
+
+    public void openMerchant(Player player, RecipeType type) {
+        List<MerchantRecipe> recipes = new ArrayList<>();
+        for (Recipe recipe : games().getRecipeSave().get(type)) {
+            List<ItemStack> items = recipe.getItems();
+            ItemStack a = items.get(0);
+            ItemStack b = items.get(1);
+            ItemStack c = items.get(2);
+            List<ItemStack> ingredients = new ArrayList<>();
+            ingredients.add(a);
+            if (b != null) ingredients.add(b);
+            MerchantRecipe mr = new MerchantRecipe(c, 999);
+            mr.setIngredients(ingredients);
+            recipes.add(mr);
+        }
+        Merchant merchant = Bukkit.createMerchant(type.getTitle());
+        merchant.setRecipes(recipes);
+        player.openMerchant(merchant, true);
     }
 
     private void makeTeams() {
@@ -338,6 +395,7 @@ public final class Game {
                 player.setFireTicks(0);
                 player.setFallDistance(0f);
                 player.setGameMode(GameMode.SURVIVAL);
+                player.getInventory().addItem(new ItemStack(Material.EMERALD, 3));
                 if (games().getSave().isEvent()) {
                     Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + player.getName());
                 }
@@ -459,6 +517,12 @@ public final class Game {
         if (state != GameState.PLAY) {
             event.setCancelled(true);
             return;
+        }
+        for (MerchantBlock mb : merchantBlocks) {
+            if (event.getEntity().equals(mb.getEntity())) {
+                event.setCancelled(true);
+                return;
+            }
         }
     }
 
@@ -744,6 +808,15 @@ public final class Game {
         GamePlayer gamePlayer = getGamePlayer(event.getPlayer());
         if (gamePlayer == null) {
             event.getPlayer().setGameMode(GameMode.SPECTATOR);
+        }
+    }
+
+    public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
+        for (MerchantBlock mb : merchantBlocks) {
+            if (event.getRightClicked().equals(mb.getEntity())) {
+                openMerchant(event.getPlayer(), mb.getType());
+                return;
+            }
         }
     }
 }
