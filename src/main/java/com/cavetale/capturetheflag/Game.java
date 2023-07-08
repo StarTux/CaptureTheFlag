@@ -170,7 +170,7 @@ public final class Game {
         this.loadedWorldName = world.getName();
         world.setGameRule(GameRule.DO_IMMEDIATE_RESPAWN, false);
         world.setGameRule(GameRule.NATURAL_REGENERATION, true);
-        world.setGameRule(GameRule.DO_FIRE_TICK, true);
+        world.setGameRule(GameRule.DO_FIRE_TICK, false);
         world.setGameRule(GameRule.DO_ENTITY_DROPS, true);
         world.setGameRule(GameRule.DO_MOB_LOOT, true);
         world.setGameRule(GameRule.DO_MOB_SPAWNING, false);
@@ -180,6 +180,7 @@ public final class Game {
         world.setGameRule(GameRule.DO_WEATHER_CYCLE, false);
         world.setGameRule(GameRule.MOB_GRIEFING, true);
         world.setGameRule(GameRule.KEEP_INVENTORY, true);
+        world.setGameRule(GameRule.RANDOM_TICK_SPEED, 0);
         world.setDifficulty(Difficulty.PEACEFUL);
         world.setTime(0L);
         world.setPVP(true);
@@ -389,7 +390,6 @@ public final class Game {
         switch (state) {
         case PLAY: {
             world.setDifficulty(Difficulty.HARD);
-            world.setGameRule(GameRule.RANDOM_TICK_SPEED, 3);
             for (Player player : world.getPlayers()) {
                 player.showTitle(title(text("Go!", GREEN), text("The game begins", GREEN)));
                 player.sendMessage(text("Go! The game begins", GREEN));
@@ -670,7 +670,7 @@ public final class Game {
                 player.setFallDistance(0f);
                 player.setGameMode(GameMode.SURVIVAL);
             }
-        } else if (!didScore) {
+        } else if (!didScore && !player.isDead()) {
             tickPlayerBoundingBox(player, gamePlayer);
         }
     }
