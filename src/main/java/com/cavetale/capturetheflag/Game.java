@@ -93,6 +93,9 @@ public final class Game {
     private static final int GAME_TIME_TICKS = 20 * 20 * 60;
     private boolean didScore;
     private int didScoreCooldown;
+    private Team teamDidScore;
+    // Constants
+    public static final int INIT_DEATH_TICKS = 200;
 
     public Game(final String mapName) {
         this.mapName = mapName;
@@ -436,9 +439,10 @@ public final class Game {
                     player.playSound(player.getLocation(), Sound.ITEM_GOAT_HORN_SOUND_1, SoundCategory.MASTER, 1f, 1f);
                 }
             }
+            // Team Win
             if (winningTeam != null && games().getSave().isEvent()) {
                 for (UUID uuid : teamMap.get(winningTeam).getMembers()) {
-                    games().getSave().addScore(uuid, 1);
+                    games().getSave().addScore(uuid, 5);
                 }
                 games().save();
             }
@@ -475,7 +479,9 @@ public final class Game {
         GamePlayer gamePlayer = getGamePlayer(player);
         if (gamePlayer == null) return;
         gamePlayer.setDead(true);
-        gamePlayer.setDeathTicks(200 + gamePlayer.getDeaths() * 200);
+        final int totalDeathTicks = gamePlayer.getTotalDeathTicks();
+        gamePlayer.setDeathTicks(totalDeathTicks);
+        gamePlayer.setTotalDeathTicks(totalDeathTicks * 2);
         gamePlayer.setDeaths(gamePlayer.getDeaths() + 1);
         GameTeam playerTeam = getTeam(player);
         if (playerTeam == null) return;
@@ -487,9 +493,10 @@ public final class Game {
         GameTeam killerTeam = getTeam(killer);
         if (killerTeam == null) return;
         if (playerTeam.getTeam() == killerTeam.getTeam()) return;
-        killer.getWorld().dropItem(killer.getLocation(), new ItemStack(Material.EMERALD, 10)).setPickupDelay(0);
+        killer.getWorld().dropItem(killer.getLocation(), new ItemStack(Material.EMERALD, 5)).setPickupDelay(0);
+        // Player Kill
         if (games().getSave().isEvent()) {
-            games().getSave().addScore(killer.getUniqueId(), 1);
+            games().getSave().addScore(killer.getUniqueId(), 3);
             games().computeHighscores();
         }
     }
@@ -514,9 +521,15 @@ public final class Game {
     public void onEntityDeath(EntityDeathEvent event) {
         if (event instanceof PlayerDeathEvent) return;
         if (state != GameState.PLAY) return;
-        if (event.getEntity().getKiller() == null) return;
+        final Player killer = event.getEntity().getKiller();
+        if (killer == null) return;
         event.setDroppedExp(event.getDroppedExp() * 10);
         event.getDrops().add(new ItemStack(Material.EMERALD, 1 + random.nextInt(3)));
+        // Creep Kill
+        if (games().getSave().isEvent()) {
+            games().getSave().addScore(killer.getUniqueId(), 1);
+            games().computeHighscores();
+        }
     }
 
     public void onEntityDamage(EntityDamageEvent event) {
@@ -596,8 +609,11 @@ public final class Game {
                 }
                 for (Player player : world.getPlayers()) {
                     GamePlayer gamePlayer = getGamePlayer(player);
-                    if (gamePlayer != null) {
-                        teleportToSpawn(player);
+                    if (gamePlayer == null) continue;
+                    teleportToSpawn(player);
+                    gamePlayer.setDeathTicks(0);
+                    if (gamePlayer.getTeam() != teamDidScore) {
+                        gamePlayer.setTotalDeathTicks(INIT_DEATH_TICKS);
                     }
                 }
             }
@@ -731,11 +747,13 @@ public final class Game {
                         for (Player target : world.getPlayers()) {
                             target.playSound(target.getLocation(), Sound.ITEM_GOAT_HORN_SOUND_3, SoundCategory.MASTER, 1f, 1f);
                         }
-                        didScore = true;
-                        didScoreCooldown = 100;
+                        this.didScore = true;
+                        this.teamDidScore = playerTeam;
+                        this.didScoreCooldown = 100;
                         playerGameTeam.setScore(playerGameTeam.getScore() + 1);
+                        // Return Flag
                         if (games().getSave().isEvent()) {
-                            games().getSave().addScore(player.getUniqueId(), 10);
+                            games().getSave().addScore(player.getUniqueId(), 15);
                             games().computeHighscores();
                             games().save();
                         }
