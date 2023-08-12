@@ -491,8 +491,8 @@ public final class Game {
         if (gamePlayer == null) return;
         gamePlayer.setDead(true);
         final int totalDeathTicks = gamePlayer.getTotalDeathTicks();
-        gamePlayer.setDeathTicks(totalDeathTicks);
-        gamePlayer.setTotalDeathTicks(totalDeathTicks * 2);
+        gamePlayer.setDeathTicks(Math.min(60 * 20, totalDeathTicks));
+        gamePlayer.setTotalDeathTicks(totalDeathTicks + INIT_DEATH_TICKS);
         gamePlayer.setDeaths(gamePlayer.getDeaths() + 1);
         GameTeam playerTeam = getTeam(player);
         if (playerTeam == null) return;
@@ -506,6 +506,7 @@ public final class Game {
         if (playerTeam.getTeam() == killerTeam.getTeam()) return;
         killer.getWorld().dropItem(killer.getLocation(), new ItemStack(Material.EMERALD, 5)).setPickupDelay(0);
         // Player Kill
+        log(killer.getName() + " killed " + player.getName());
         if (games().getSave().isEvent()) {
             games().getSave().addScore(killer.getUniqueId(), 3);
             games().computeHighscores();
@@ -534,9 +535,11 @@ public final class Game {
         if (state != GameState.PLAY) return;
         final Player killer = event.getEntity().getKiller();
         if (killer == null) return;
+        if (event.getEntity().getEntitySpawnReason() == SpawnReason.SLIME_SPLIT) return;
         event.setDroppedExp(event.getDroppedExp() * 10);
         event.getDrops().add(new ItemStack(Material.EMERALD, 1 + random.nextInt(3)));
         // Creep Kill
+        log(killer.getName() + " killed a creep");
         if (games().getSave().isEvent()) {
             games().getSave().addScore(killer.getUniqueId(), 1);
             games().computeHighscores();
