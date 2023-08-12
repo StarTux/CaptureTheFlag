@@ -80,6 +80,12 @@ public final class CaptureTheFlagAdminCommand extends AbstractCommand<CaptureThe
                         CommandArgCompleter.integer(i -> i != 0))
             .description("Change team score")
             .senderCaller(this::teamAddScore);
+        // Item
+        CommandNode itemNode = rootNode.addChild("item")
+            .description("Item commands");
+        itemNode.addChild("landmine").denyTabCompletion()
+            .description("Spawn land mine")
+            .playerCaller(p -> p.getInventory().addItem(Items.items().landMine));
     }
 
     private boolean start(CommandSender sender, String[] args) {

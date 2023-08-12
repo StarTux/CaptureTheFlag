@@ -8,6 +8,7 @@ public final class CaptureTheFlagPlugin extends JavaPlugin {
     protected final CaptureTheFlagAdminCommand captureTheFlagAdminCommand = new CaptureTheFlagAdminCommand(this);
     protected final EventListener eventListener = new EventListener();
     protected final Games games = new Games();
+    protected final Items items = new Items();
 
     public CaptureTheFlagPlugin() {
         instance = this;
@@ -20,6 +21,7 @@ public final class CaptureTheFlagPlugin extends JavaPlugin {
         captureTheFlagAdminCommand.enable();
         eventListener.enable();
         games.enable();
+        items.enable();
     }
 
     @Override

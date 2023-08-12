@@ -36,6 +36,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
@@ -49,12 +50,15 @@ import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Villager;
 import org.bukkit.entity.Zombie;
 import org.bukkit.event.Cancellable;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.ItemStack;
@@ -65,6 +69,7 @@ import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 import static com.cavetale.capturetheflag.CaptureTheFlagPlugin.plugin;
 import static com.cavetale.capturetheflag.Games.games;
+import static com.cavetale.capturetheflag.Items.items;
 import static com.cavetale.core.font.Unicode.tiny;
 import static net.kyori.adventure.text.Component.empty;
 import static net.kyori.adventure.text.Component.space;
@@ -94,6 +99,7 @@ public final class Game {
     private boolean didScore;
     private int didScoreCooldown;
     private Team teamDidScore;
+    final Map<Vec3i, UUID> landMines = new HashMap<>();
     // Constants
     public static final int INIT_DEATH_TICKS = 200;
 
@@ -103,6 +109,11 @@ public final class Game {
 
     public static Game in(World world) {
         return Games.games().getGameMap().get(world.getName());
+    }
+
+    public static void applyGameIn(World world, Consumer<Game> callback) {
+        Game game = in(world);
+        if (game != null) callback.accept(game);
     }
 
     public static Game of(Entity entity) {
@@ -892,6 +903,56 @@ public final class Game {
                     }
                 }
             }
+        }
+    }
+
+    protected void onBlockPlace(BlockPlaceEvent event) {
+        if (state != GameState.PLAY) return;
+        Player player = event.getPlayer();
+        Block block = event.getBlock();
+        Material material = block.getType();
+        ItemStack itemInHand = event.getItemInHand();
+        if (Tag.PRESSURE_PLATES.isTagged(material) && items().landMine.isSimilar(itemInHand)) {
+            landMines.put(Vec3i.of(block), player.getUniqueId());
+            log(String.format("%s placed Land Mine at %d,%d,%d", player.getName(), block.getX(), block.getY(), block.getZ()));
+            return;
+        }
+    }
+
+    protected void onBlockBreak(BlockBreakEvent event) {
+        if (state != GameState.PLAY) return;
+        Block block = event.getBlock();
+        Vec3i vec = Vec3i.of(block);
+        Material material = block.getType();
+        if (Tag.PRESSURE_PLATES.isTagged(material) && landMines.remove(vec) != null) {
+            event.setCancelled(true);
+            landMines.remove(vec);
+            block.setType(Material.AIR);
+            world.dropItemNaturally(event.getBlock().getLocation().add(0.5, 0.5, 0.5), items().landMine.clone());
+        }
+    }
+
+    protected void onPlayerInteract(PlayerInteractEvent event) {
+        if (state != GameState.PLAY) return;
+        if (!event.hasBlock()) return;
+        final Player player = event.getPlayer();
+        final Block block = event.getClickedBlock();
+        if (block == null) return;
+        switch (event.getAction()) {
+        case PHYSICAL:
+            break;
+        default: return;
+        }
+        Vec3i vec = Vec3i.of(block);
+        if (Tag.PRESSURE_PLATES.isTagged(block.getType()) && landMines.containsKey(vec)) {
+            UUID owner = landMines.remove(vec);
+            block.setType(Material.AIR);
+            Location loc = block.getLocation().add(0.5, 0.5, 0.5);
+            final float power = 4f;
+            final boolean fire = true;
+            final boolean breakBlocks = true;
+            block.getWorld().createExplosion(loc, power, fire, breakBlocks);
+            log(String.format("%s triggered land mine at %d,%d,%d", player.getName(), block.getX(), block.getY(), block.getZ()));
         }
     }
 }

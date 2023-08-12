@@ -25,6 +25,7 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -135,11 +136,13 @@ public final class EventListener implements Listener {
     @EventHandler
     private void onBlockBreak(BlockBreakEvent event) {
         onBuild(event, event.getPlayer(), event.getBlock());
+        Game.applyGameIn(event.getBlock().getWorld(), game -> game.onBlockBreak(event));
     }
 
     @EventHandler
     private void onBlockPlace(BlockPlaceEvent event) {
         onBuild(event, event.getPlayer(), event.getBlock());
+        Game.applyGameIn(event.getBlock().getWorld(), game -> game.onBlockPlace(event));
     }
 
     private void onBuild(Cancellable event, Player player, Block block) {
@@ -160,5 +163,10 @@ public final class EventListener implements Listener {
     private void onExplode(Cancellable event, World world, List<Block> blockList) {
         Game game = Game.in(world);
         if (game != null) game.onExplode(event, blockList);
+    }
+
+    @EventHandler
+    private void onPlayerInteract(PlayerInteractEvent event) {
+        Game.applyGameIn(event.getPlayer().getWorld(), game -> game.onPlayerInteract(event));
     }
 }
