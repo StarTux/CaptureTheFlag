@@ -7,6 +7,7 @@ import com.cavetale.core.command.CommandWarn;
 import com.cavetale.core.item.ItemKinds;
 import com.cavetale.core.playercache.PlayerCache;
 import com.cavetale.mytems.util.Gui;
+import com.winthier.creative.BuildWorld;
 import java.util.List;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -25,7 +26,7 @@ public final class CaptureTheFlagAdminCommand extends AbstractCommand<CaptureThe
     protected void onEnable() {
         rootNode.addChild("start").arguments("<map>")
             .description("Start the game")
-            .completers(CommandArgCompleter.supplyList(() -> Games.games().getMapNames()))
+            .completers(CommandArgCompleter.supplyList(() -> List.copyOf(Games.games().getMaps().keySet())))
             .senderCaller(this::start);
         rootNode.addChild("stop").denyTabCompletion()
             .description("Stop the game")
@@ -90,8 +91,10 @@ public final class CaptureTheFlagAdminCommand extends AbstractCommand<CaptureThe
 
     private boolean start(CommandSender sender, String[] args) {
         if (args.length != 1) return false;
-        String mapName = args[0];
-        Games.games().startGame(mapName);
+        BuildWorld buildWorld = Games.games().getMaps().get(args[0]);
+        if (buildWorld == null) throw new CommandWarn("Map not found: " + args[0]);
+        Games.games().startGame(buildWorld);
+        sender.sendMessage(text("Game starting: " + buildWorld.getName(), YELLOW));
         return true;
     }
 
@@ -118,6 +121,10 @@ public final class CaptureTheFlagAdminCommand extends AbstractCommand<CaptureThe
         case COUNTDOWN:
             game.setStateTicks(20 * 60);
             player.sendMessage(text("Countdown skipped", YELLOW));
+            break;
+        case PLAY:
+            game.setStateTicks(game.getStateTicks() + 20 * 60);
+            player.sendMessage(text("Time progressed", YELLOW));
             break;
         default: throw new CommandWarn("Cannot skip!");
         }

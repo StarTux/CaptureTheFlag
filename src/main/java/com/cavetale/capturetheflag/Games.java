@@ -1,10 +1,11 @@
 package com.cavetale.capturetheflag;
 
+import com.cavetale.core.event.minigame.MinigameMatchType;
 import com.cavetale.core.util.Json;
 import com.cavetale.fam.trophy.Highscore;
 import com.cavetale.mytems.item.trophy.TrophyCategory;
+import com.winthier.creative.BuildWorld;
 import java.io.File;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +27,7 @@ public final class Games {
     private File recipeSaveFile;
     private Save save;
     private RecipeSave recipeSave;
-    private List<String> mapNames = new ArrayList<>();
+    private Map<String, BuildWorld> maps = new HashMap<>();
     public static final Component TITLE = textOfChildren(text("Capture", RED),
                                                          text(tiny("the"), GRAY),
                                                          text("Flag", BLUE));
@@ -59,7 +60,9 @@ public final class Games {
     }
 
     public void loadConfig() {
-        mapNames.addAll(plugin().getConfig().getStringList("Maps"));
+        for (BuildWorld buildWorld : BuildWorld.findMinigameWorlds(MinigameMatchType.CAPTURE_THE_FLAG, false)) {
+            maps.put(buildWorld.getPath(), buildWorld);
+        }
     }
 
     public void load() {
@@ -78,20 +81,19 @@ public final class Games {
         Json.save(recipeSaveFile, recipeSave, true);
     }
 
-    public boolean startGame(String mapName) {
-        Game game = new Game(mapName);
+    public boolean startGame(BuildWorld buildWorld) {
+        Game game = new Game(buildWorld);
         try {
             game.enable();
         } catch (Exception e) {
-            plugin().getLogger().log(Level.SEVERE, "Load game " + mapName, e);
+            plugin().getLogger().log(Level.SEVERE, "Load game " + buildWorld.getPath(), e);
             try {
                 game.disable();
             } catch (Exception f) {
-                plugin().getLogger().log(Level.SEVERE, "Disable game " + mapName, e);
+                plugin().getLogger().log(Level.SEVERE, "Disable game " + buildWorld.getPath(), e);
             }
             return false;
         }
-        gameMap.put(game.getLoadedWorldName(), game);
         return true;
     }
 

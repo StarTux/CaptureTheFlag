@@ -62,7 +62,7 @@
     <dependency>
       <groupId>io.papermc.paper</groupId>
       <artifactId>paper-api</artifactId>
-      <version>1.20.1-R0.1-SNAPSHOT</version>
+      <version>1.20.2-R0.1-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
 
@@ -110,6 +110,14 @@
     <dependency>
       <groupId>com.cavetale.fam</groupId>
       <artifactId>fam</artifactId>
+      <version>0.1-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- Creative -->
+    <dependency>
+      <groupId>com.winthier.creative</groupId>
+      <artifactId>creative</artifactId>
       <version>0.1-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>

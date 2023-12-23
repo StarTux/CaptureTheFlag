@@ -2,7 +2,6 @@ package com.cavetale.capturetheflag;
 
 import com.cavetale.area.struct.Area;
 import com.cavetale.area.struct.AreasFile;
-import com.cavetale.capturetheflag.world.Worlds;
 import com.cavetale.core.event.hud.PlayerHudEvent;
 import com.cavetale.core.event.hud.PlayerHudPriority;
 import com.cavetale.core.playercache.PlayerCache;
@@ -10,6 +9,9 @@ import com.cavetale.core.struct.Cuboid;
 import com.cavetale.core.struct.Vec2i;
 import com.cavetale.core.struct.Vec3i;
 import com.cavetale.mytems.Mytems;
+import com.winthier.creative.BuildWorld;
+import com.winthier.creative.file.Files;
+import com.winthier.creative.review.MapReview;
 import com.winthier.title.TitlePlugin;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -80,7 +82,7 @@ import static net.kyori.adventure.title.Title.title;
 
 @Data
 public final class Game {
-    private final String mapName;
+    private final BuildWorld buildWorld;
     private String loadedWorldName; // loaded world name
     private World world;
     private List<Cuboid> gameAreas = new ArrayList<>();
@@ -103,8 +105,8 @@ public final class Game {
     // Constants
     public static final int INIT_DEATH_TICKS = 200;
 
-    public Game(final String mapName) {
-        this.mapName = mapName;
+    public Game(final BuildWorld buildWorld) {
+        this.buildWorld = buildWorld;
     }
 
     public static Game in(World world) {
@@ -122,9 +124,13 @@ public final class Game {
 
     public void enable() {
         loadWorld();
+    }
+
+    private void onWorldLoaded() {
         if (world == null) {
-            throw new IllegalStateException("World didn't load: " + mapName);
+            throw new IllegalStateException("World didn't load: " + buildWorld.getRow().getPath());
         }
+        games().getGameMap().put(loadedWorldName, this);
         for (Team team : Team.values()) {
             teamMap.put(team, new GameTeam(this, team));
         }
@@ -153,7 +159,7 @@ public final class Game {
         }
         if (world != null) {
             world.removePluginChunkTickets(plugin());
-            Worlds.deleteWorld(world);
+            Files.deleteWorld(world);
             world = null;
         }
         if (task != null) {
@@ -179,31 +185,34 @@ public final class Game {
     }
 
     private void loadWorld() {
-        this.world = Worlds.loadWorldCopy(mapName);
-        if (world == null) throw new IllegalStateException("Loading world " + mapName);
-        this.loadedWorldName = world.getName();
-        world.setGameRule(GameRule.DO_IMMEDIATE_RESPAWN, false);
-        world.setGameRule(GameRule.NATURAL_REGENERATION, true);
-        world.setGameRule(GameRule.DO_FIRE_TICK, false);
-        world.setGameRule(GameRule.DO_ENTITY_DROPS, true);
-        world.setGameRule(GameRule.DO_MOB_LOOT, true);
-        world.setGameRule(GameRule.DO_MOB_SPAWNING, false);
-        world.setGameRule(GameRule.DO_TILE_DROPS, true);
-        world.setGameRule(GameRule.SHOW_DEATH_MESSAGES, true);
-        world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, true);
-        world.setGameRule(GameRule.DO_WEATHER_CYCLE, false);
-        world.setGameRule(GameRule.MOB_GRIEFING, true);
-        world.setGameRule(GameRule.KEEP_INVENTORY, true);
-        world.setGameRule(GameRule.RANDOM_TICK_SPEED, 0);
-        world.setDifficulty(Difficulty.PEACEFUL);
-        world.setTime(0L);
-        world.setPVP(true);
+        buildWorld.makeLocalCopyAsync(w -> {
+                if (w == null) throw new IllegalStateException("Loading world " + buildWorld.getPath());
+                this.world = w;
+                this.loadedWorldName = world.getName();
+                world.setGameRule(GameRule.DO_IMMEDIATE_RESPAWN, false);
+                world.setGameRule(GameRule.NATURAL_REGENERATION, true);
+                world.setGameRule(GameRule.DO_FIRE_TICK, false);
+                world.setGameRule(GameRule.DO_ENTITY_DROPS, true);
+                world.setGameRule(GameRule.DO_MOB_LOOT, true);
+                world.setGameRule(GameRule.DO_MOB_SPAWNING, false);
+                world.setGameRule(GameRule.DO_TILE_DROPS, true);
+                world.setGameRule(GameRule.SHOW_DEATH_MESSAGES, true);
+                world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, true);
+                world.setGameRule(GameRule.DO_WEATHER_CYCLE, false);
+                world.setGameRule(GameRule.MOB_GRIEFING, true);
+                world.setGameRule(GameRule.KEEP_INVENTORY, true);
+                world.setGameRule(GameRule.RANDOM_TICK_SPEED, 0);
+                world.setDifficulty(Difficulty.PEACEFUL);
+                world.setTime(0L);
+                world.setPVP(true);
+                onWorldLoaded();
+            });
     }
 
     private void loadAreas() {
         AreasFile areasFile = AreasFile.load(world, "CaptureTheFlag");
         if (areasFile == null) {
-            throw new IllegalStateException("No areas file: " + mapName);
+            throw new IllegalStateException("No areas file: " + buildWorld.getPath());
         }
         for (Area area : areasFile.find("game")) {
             gameAreas.add(area.toCuboid());
@@ -457,6 +466,7 @@ public final class Game {
                 }
                 games().save();
             }
+            MapReview.start(world, buildWorld).remindAll();
             break;
         }
         default: break;
