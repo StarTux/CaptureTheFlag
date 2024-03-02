@@ -482,8 +482,8 @@ public final class Game {
                 final Player player = gamePlayer.getPlayer();
                 if (player != null) {
                     player.sendMessage(textOfChildren(text("You received "), Money.get().toComponent((double) gamePlayer.getMoney()))
-                                       .hoverEvent(text("/money", GRAY))
-                                       .clickEvent(runCommand("/money")));
+                                       .hoverEvent(text("/money log", GRAY))
+                                       .clickEvent(runCommand("/money log")));
                 }
                 gamePlayer.setMoney(0);
             }
