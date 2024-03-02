@@ -477,7 +477,11 @@ public final class Game {
             MapReview.start(world, buildWorld).remindAll();
             for (GamePlayer gamePlayer : playerMap.values()) {
                 if (gamePlayer.getMoney() <= 0) continue;
-                Money.get().give(gamePlayer.getUuid(), (double) gamePlayer.getMoney());
+                Money.get().give(gamePlayer.getUuid(), (double) gamePlayer.getMoney(), plugin(), "Capture the Flag");
+                final Player player = gamePlayer.getPlayer();
+                if (player != null) {
+                    player.sendMessage(textOfChildren(text("You received "), Money.get().toComponent((double) gamePlayer.getMoney())));
+                }
                 gamePlayer.setMoney(0);
             }
             break;
