@@ -16,6 +16,7 @@ public final class GamePlayer {
     private int deaths;
     private int deathTicks;
     private int totalDeathTicks = Game.INIT_DEATH_TICKS;
+    private int money;
 
     public GamePlayer(final Player player) {
         this(player.getUniqueId(), player.getName());
@@ -27,5 +28,9 @@ public final class GamePlayer {
 
     public Team getTeam() {
         return gameTeam.getTeam();
+    }
+
+    public void addMoney(int amount) {
+        money += amount;
     }
 }

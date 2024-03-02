@@ -4,6 +4,7 @@ import com.cavetale.area.struct.Area;
 import com.cavetale.area.struct.AreasFile;
 import com.cavetale.core.event.hud.PlayerHudEvent;
 import com.cavetale.core.event.hud.PlayerHudPriority;
+import com.cavetale.core.money.Money;
 import com.cavetale.core.playercache.PlayerCache;
 import com.cavetale.core.struct.Cuboid;
 import com.cavetale.core.struct.Vec2i;
@@ -356,6 +357,10 @@ public final class Game {
         return gp != null ? gp.getGameTeam() : null;
     }
 
+    public GamePlayer getGamePlayer(UUID uuid) {
+        return playerMap.get(uuid);
+    }
+
     public GamePlayer getGamePlayer(Player player) {
         return playerMap.get(player.getUniqueId());
     }
@@ -462,11 +467,19 @@ public final class Game {
             // Team Win
             if (winningTeam != null && games().getSave().isEvent()) {
                 for (UUID uuid : teamMap.get(winningTeam).getMembers()) {
+                    GamePlayer gamePlayer = getGamePlayer(uuid);
+                    if (gamePlayer == null) continue;
                     games().getSave().addScore(uuid, 5);
+                    gamePlayer.addMoney(10_000);
                 }
                 games().save();
             }
             MapReview.start(world, buildWorld).remindAll();
+            for (GamePlayer gamePlayer : playerMap.values()) {
+                if (gamePlayer.getMoney() <= 0) continue;
+                Money.get().give(gamePlayer.getUuid(), (double) gamePlayer.getMoney());
+                gamePlayer.setMoney(0);
+            }
             break;
         }
         default: break;
@@ -520,6 +533,7 @@ public final class Game {
         if (games().getSave().isEvent()) {
             games().getSave().addScore(killer.getUniqueId(), 3);
             games().computeHighscores();
+            gameKiller.addMoney(500);
         }
     }
 
@@ -545,6 +559,8 @@ public final class Game {
         if (state != GameState.PLAY) return;
         final Player killer = event.getEntity().getKiller();
         if (killer == null) return;
+        final GamePlayer gameKiller = getGamePlayer(killer);
+        if (gameKiller == null) return;
         if (event.getEntity().getEntitySpawnReason() == SpawnReason.SLIME_SPLIT) return;
         event.setDroppedExp(event.getDroppedExp() * 10);
         event.getDrops().add(new ItemStack(Material.EMERALD, 1 + random.nextInt(3)));
@@ -553,6 +569,7 @@ public final class Game {
         if (games().getSave().isEvent()) {
             games().getSave().addScore(killer.getUniqueId(), 1);
             games().computeHighscores();
+            gameKiller.addMoney(500);
         }
     }
 
@@ -777,9 +794,10 @@ public final class Game {
                         playerGameTeam.setScore(playerGameTeam.getScore() + 1);
                         // Return Flag
                         if (games().getSave().isEvent()) {
-                            games().getSave().addScore(player.getUniqueId(), 15);
+                            games().getSave().addScore(player.getUniqueId(), 25);
                             games().computeHighscores();
                             games().save();
+                            gamePlayer.addMoney(10_000);
                         }
                     }
                 }
