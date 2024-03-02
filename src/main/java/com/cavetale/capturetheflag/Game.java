@@ -78,6 +78,7 @@ import static net.kyori.adventure.text.Component.empty;
 import static net.kyori.adventure.text.Component.space;
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.Component.textOfChildren;
+import static net.kyori.adventure.text.event.ClickEvent.runCommand;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 import static net.kyori.adventure.title.Title.title;
 
@@ -480,7 +481,9 @@ public final class Game {
                 Money.get().give(gamePlayer.getUuid(), (double) gamePlayer.getMoney(), plugin(), "Capture the Flag");
                 final Player player = gamePlayer.getPlayer();
                 if (player != null) {
-                    player.sendMessage(textOfChildren(text("You received "), Money.get().toComponent((double) gamePlayer.getMoney())));
+                    player.sendMessage(textOfChildren(text("You received "), Money.get().toComponent((double) gamePlayer.getMoney()))
+                                       .hoverEvent(text("/money", GRAY))
+                                       .clickEvent(runCommand("/money")));
                 }
                 gamePlayer.setMoney(0);
             }
