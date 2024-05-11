@@ -50,7 +50,9 @@ import org.bukkit.entity.Guardian;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
+import org.bukkit.entity.Tameable;
 import org.bukkit.entity.Villager;
+import org.bukkit.entity.Wolf;
 import org.bukkit.entity.Zombie;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -59,6 +61,7 @@ import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityTargetEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -904,25 +907,49 @@ public final class Game {
         }
     }
 
-    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        if (!(event.getEntity() instanceof Player player)) return;
-        final Player damager;
-        if (event.getDamager() instanceof Player p) {
-            damager = p;
-        } else if (event.getDamager() instanceof Projectile p) {
-            if (p.getShooter() instanceof Player q) {
-                damager = q;
-            } else {
-                return;
-            }
+    public static Player getEntityOwner(Entity entity) {
+        if (entity == null) {
+            return null;
+        } else if (entity instanceof Player player) {
+            return player;
+        } else if (entity instanceof Projectile projectile && projectile.getShooter() instanceof Player shooter) {
+            return shooter;
+        } else if (entity instanceof Tameable tameable && tameable.getOwner() instanceof Player owner) {
+            return owner;
         } else {
-            return;
+            return null;
         }
+    }
+
+    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        final Player player = getEntityOwner(event.getEntity());
+        final Player damager = getEntityOwner(event.getDamager());
+        if (damager != null && player != null) {
+            onPlayerDamagePlayer(event, damager, player);
+        }
+    }
+
+    private void onPlayerDamagePlayer(EntityDamageByEntityEvent event, Player damager, Player player) {
         GamePlayer gamePlayer = getGamePlayer(player);
         if (gamePlayer == null) return;
         GamePlayer gameDamager = getGamePlayer(damager);
         if (gameDamager == null) return;
         if (gamePlayer.getTeam() == gameDamager.getTeam()) {
+            event.setCancelled(true);
+            return;
+        }
+    }
+
+    public void onEntityTarget(EntityTargetEvent event) {
+        final Player owner = getEntityOwner(event.getEntity());
+        if (owner == null) return;
+        final Player target = getEntityOwner(event.getTarget());
+        if (target == null) return;
+        GamePlayer gameOwner = getGamePlayer(owner);
+        if (gameOwner == null) return;
+        GamePlayer gameTarget = getGamePlayer(target);
+        if (gameTarget == null) return;
+        if (gameOwner.getTeam() == gameTarget.getTeam()) {
             event.setCancelled(true);
             return;
         }
@@ -971,6 +998,11 @@ public final class Game {
     }
 
     protected void onPlayerInteract(PlayerInteractEvent event) {
+        onPlayerInteractBlock(event);
+        onPlayerInteractItem(event);
+    }
+
+    protected void onPlayerInteractBlock(PlayerInteractEvent event) {
         if (state != GameState.PLAY) return;
         if (!event.hasBlock()) return;
         final Player player = event.getPlayer();
@@ -991,6 +1023,45 @@ public final class Game {
             final boolean breakBlocks = true;
             block.getWorld().createExplosion(loc, power, fire, breakBlocks);
             log(String.format("%s triggered land mine at %d,%d,%d", player.getName(), block.getX(), block.getY(), block.getZ()));
+        }
+    }
+
+    protected void onPlayerInteractItem(PlayerInteractEvent event) {
+        if (state != GameState.PLAY) return;
+        if (!event.hasItem()) return;
+        final Player player = event.getPlayer();
+        final GamePlayer gamePlayer = getGamePlayer(player);
+        if (gamePlayer == null) {
+            return;
+        }
+        final ItemStack item = event.getItem();
+        if (item == null) return;
+        switch (event.getAction()) {
+        case RIGHT_CLICK_BLOCK:
+        case RIGHT_CLICK_AIR:
+            break;
+        default: return;
+        }
+        switch (item.getType()) {
+        case WOLF_SPAWN_EGG:
+            item.subtract(1);
+            final Wolf wolf = player.getWorld().spawn(player.getLocation(), Wolf.class, e -> {
+                    e.setPersistent(false);
+                    e.setAdult();
+                    e.setTamed(true);
+                    e.setOwner(player);
+                    e.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0.5);
+                    final double health = 40.0;
+                    e.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(health);
+                    e.setHealth(health);
+                    e.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).setBaseValue(8.0);
+                    e.setCollarColor(gamePlayer.getTeam().getDyeColor());
+                });
+            if (wolf == null) return;
+            wolf.getWorld().playSound(wolf.getLocation(), Sound.ENTITY_WOLF_HOWL, 1f, 1f);
+            player.sendMessage(text("Your tamed wolf has been spawned", gamePlayer.getTeam().getTextColor()));
+            break;
+        default: break;
         }
     }
 }

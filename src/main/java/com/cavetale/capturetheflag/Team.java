@@ -6,13 +6,14 @@ import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Color;
+import org.bukkit.DyeColor;
 import org.bukkit.Material;
 import static net.kyori.adventure.text.Component.text;
 
 @Getter @RequiredArgsConstructor
 public enum Team {
-    RED("Red", NamedTextColor.RED, Material.RED_BANNER, VanillaItems.RED_CONCRETE),
-    BLUE("Blue", NamedTextColor.BLUE, Material.BLUE_BANNER, VanillaItems.BLUE_CONCRETE),
+    RED("Red", NamedTextColor.RED, Material.RED_BANNER, VanillaItems.RED_CONCRETE, DyeColor.RED),
+    BLUE("Blue", NamedTextColor.BLUE, Material.BLUE_BANNER, VanillaItems.BLUE_CONCRETE, DyeColor.BLUE),
     ;
 
     public final String key = name().toLowerCase();
@@ -20,6 +21,7 @@ public enum Team {
     public final NamedTextColor textColor;
     public final Material dyeMaterial;
     public final VanillaItems vanillaItem;
+    public final DyeColor dyeColor;
 
     public static Team ofKey(String in) {
         for (Team team : Team.values()) {

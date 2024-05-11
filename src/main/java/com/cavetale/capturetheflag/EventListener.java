@@ -23,6 +23,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.EntityTargetEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -168,5 +169,10 @@ public final class EventListener implements Listener {
     @EventHandler
     private void onPlayerInteract(PlayerInteractEvent event) {
         Game.applyGameIn(event.getPlayer().getWorld(), game -> game.onPlayerInteract(event));
+    }
+
+    @EventHandler
+    private void onEntityTarget(EntityTargetEvent event) {
+        Game.applyGameIn(event.getEntity().getWorld(), game -> game.onEntityTarget(event));
     }
 }
