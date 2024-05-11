@@ -471,7 +471,7 @@ public final class Game {
                     GamePlayer gamePlayer = getGamePlayer(uuid);
                     if (gamePlayer == null) continue;
                     games().getSave().addScore(uuid, 5);
-                    gamePlayer.addMoney(10_000);
+                    gamePlayer.addMoney(1000);
                 }
                 games().save();
             }
@@ -540,7 +540,7 @@ public final class Game {
         if (games().getSave().isEvent()) {
             games().getSave().addScore(killer.getUniqueId(), 3);
             games().computeHighscores();
-            gameKiller.addMoney(500);
+            gameKiller.addMoney(100);
         }
     }
 
@@ -576,7 +576,7 @@ public final class Game {
         if (games().getSave().isEvent()) {
             games().getSave().addScore(killer.getUniqueId(), 1);
             games().computeHighscores();
-            gameKiller.addMoney(500);
+            gameKiller.addMoney(100);
         }
     }
 
@@ -804,7 +804,7 @@ public final class Game {
                             games().getSave().addScore(player.getUniqueId(), 25);
                             games().computeHighscores();
                             games().save();
-                            gamePlayer.addMoney(10_000);
+                            gamePlayer.addMoney(1000);
                         }
                     }
                 }
