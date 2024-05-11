@@ -55,6 +55,7 @@ import org.bukkit.entity.Villager;
 import org.bukkit.entity.Wolf;
 import org.bukkit.entity.Zombie;
 import org.bukkit.event.Cancellable;
+import org.bukkit.event.Event;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
@@ -1044,6 +1045,7 @@ public final class Game {
         }
         switch (item.getType()) {
         case WOLF_SPAWN_EGG:
+            event.setUseItemInHand(Event.Result.DENY);
             item.subtract(1);
             final Wolf wolf = player.getWorld().spawn(player.getLocation(), Wolf.class, e -> {
                     e.setPersistent(false);
@@ -1058,6 +1060,7 @@ public final class Game {
                     e.setCollarColor(gamePlayer.getTeam().getDyeColor());
                 });
             if (wolf == null) return;
+            wolf.setAdult();
             wolf.getWorld().playSound(wolf.getLocation(), Sound.ENTITY_WOLF_HOWL, 1f, 1f);
             player.sendMessage(text("Your tamed wolf has been spawned", gamePlayer.getTeam().getTextColor()));
             break;
