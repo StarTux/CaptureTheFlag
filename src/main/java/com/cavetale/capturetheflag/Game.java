@@ -576,7 +576,7 @@ public final class Game {
         if (games().getSave().isEvent()) {
             games().getSave().addScore(killer.getUniqueId(), 1);
             games().computeHighscores();
-            gameKiller.addMoney(100);
+            gameKiller.addMoney(50);
         }
     }
 
