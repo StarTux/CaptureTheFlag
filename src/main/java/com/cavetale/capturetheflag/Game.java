@@ -1056,7 +1056,7 @@ public final class Game {
                     final double health = 40.0;
                     e.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(health);
                     e.setHealth(health);
-                    e.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).setBaseValue(8.0);
+                    e.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).setBaseValue(6.0);
                     e.setCollarColor(gamePlayer.getTeam().getDyeColor());
                 });
             if (wolf == null) return;
