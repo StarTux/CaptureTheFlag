@@ -124,9 +124,13 @@ public final class Game {
         return Games.games().getGameMap().get(world.getName());
     }
 
-    public static void applyGameIn(World world, Consumer<Game> callback) {
+    public static boolean applyGameIn(World world, Consumer<Game> callback) {
         Game game = in(world);
-        if (game != null) callback.accept(game);
+        if (game == null) {
+            return false;
+        }
+        callback.accept(game);
+        return true;
     }
 
     public static Game of(Entity entity) {
@@ -166,6 +170,7 @@ public final class Game {
             player.teleport(Bukkit.getWorlds().get(0).getSpawnLocation());
             player.setGameMode(GameMode.ADVENTURE);
             player.getInventory().clear();
+            player.getEnderChest().clear();
             player.setHealth(20.0);
             player.setFoodLevel(20);
             player.setSaturation(20f);
