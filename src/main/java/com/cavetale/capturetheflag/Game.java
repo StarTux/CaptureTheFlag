@@ -115,6 +115,11 @@ public final class Game {
         this.buildWorld = buildWorld;
     }
 
+    public Game(final BuildWorld buildWorld, final World world) {
+        this.buildWorld = buildWorld;
+        this.world = world;
+    }
+
     public static Game in(World world) {
         return Games.games().getGameMap().get(world.getName());
     }
@@ -129,7 +134,11 @@ public final class Game {
     }
 
     public void enable() {
-        loadWorld();
+        if (world == null) {
+            loadWorld();
+        } else {
+            prepareWorld();
+        }
     }
 
     private void onWorldLoaded() {
@@ -192,27 +201,33 @@ public final class Game {
 
     private void loadWorld() {
         buildWorld.makeLocalCopyAsync(w -> {
-                if (w == null) throw new IllegalStateException("Loading world " + buildWorld.getPath());
                 this.world = w;
-                this.loadedWorldName = world.getName();
-                world.setGameRule(GameRule.DO_IMMEDIATE_RESPAWN, false);
-                world.setGameRule(GameRule.NATURAL_REGENERATION, true);
-                world.setGameRule(GameRule.DO_FIRE_TICK, false);
-                world.setGameRule(GameRule.DO_ENTITY_DROPS, true);
-                world.setGameRule(GameRule.DO_MOB_LOOT, true);
-                world.setGameRule(GameRule.DO_MOB_SPAWNING, false);
-                world.setGameRule(GameRule.DO_TILE_DROPS, true);
-                world.setGameRule(GameRule.SHOW_DEATH_MESSAGES, true);
-                world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, true);
-                world.setGameRule(GameRule.DO_WEATHER_CYCLE, false);
-                world.setGameRule(GameRule.MOB_GRIEFING, true);
-                world.setGameRule(GameRule.KEEP_INVENTORY, true);
-                world.setGameRule(GameRule.RANDOM_TICK_SPEED, 0);
-                world.setDifficulty(Difficulty.PEACEFUL);
-                world.setTime(0L);
-                world.setPVP(true);
-                onWorldLoaded();
+                prepareWorld();
             });
+    }
+
+    private void prepareWorld() {
+        if (world == null) {
+            throw new IllegalStateException("World not loaded " + buildWorld.getPath());
+        }
+        this.loadedWorldName = world.getName();
+        world.setGameRule(GameRule.DO_IMMEDIATE_RESPAWN, false);
+        world.setGameRule(GameRule.NATURAL_REGENERATION, true);
+        world.setGameRule(GameRule.DO_FIRE_TICK, false);
+        world.setGameRule(GameRule.DO_ENTITY_DROPS, true);
+        world.setGameRule(GameRule.DO_MOB_LOOT, true);
+        world.setGameRule(GameRule.DO_MOB_SPAWNING, false);
+        world.setGameRule(GameRule.DO_TILE_DROPS, true);
+        world.setGameRule(GameRule.SHOW_DEATH_MESSAGES, true);
+        world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, true);
+        world.setGameRule(GameRule.DO_WEATHER_CYCLE, false);
+        world.setGameRule(GameRule.MOB_GRIEFING, true);
+        world.setGameRule(GameRule.KEEP_INVENTORY, true);
+        world.setGameRule(GameRule.RANDOM_TICK_SPEED, 0);
+        world.setDifficulty(Difficulty.PEACEFUL);
+        world.setTime(0L);
+        world.setPVP(true);
+        onWorldLoaded();
     }
 
     private void loadAreas() {
@@ -347,6 +362,7 @@ public final class Game {
         for (GamePlayer gp : gpList) {
             Player player = gp.getPlayer();
             player.getInventory().clear();
+            player.getEnderChest().clear();
             player.setHealth(20.0);
             player.setFoodLevel(20);
             player.setSaturation(20f);
@@ -355,6 +371,7 @@ public final class Game {
             player.setGameMode(GameMode.ADVENTURE);
             teleportToSpawn(player);
         }
+        buildWorld.announceMap(world);
     }
 
     public GameTeam getTeam(Player player) {
@@ -434,6 +451,7 @@ public final class Game {
                 player.setFireTicks(0);
                 player.setFallDistance(0f);
                 player.setGameMode(GameMode.SURVIVAL);
+                player.getInventory().addItem(new ItemStack(Material.STONE_SWORD));
                 giveReward(player, 3);
                 if (games().getSave().isEvent()) {
                     Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + player.getName());

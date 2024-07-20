@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import lombok.Data;
 import net.kyori.adventure.text.Component;
+import org.bukkit.World;
 import static com.cavetale.capturetheflag.CaptureTheFlagPlugin.plugin;
 import static com.cavetale.core.font.Unicode.tiny;
 import static net.kyori.adventure.text.Component.text;
@@ -82,11 +83,27 @@ public final class Games {
     }
 
     public boolean startGame(BuildWorld buildWorld) {
-        Game game = new Game(buildWorld);
+        final Game game = new Game(buildWorld);
         try {
             game.enable();
         } catch (Exception e) {
             plugin().getLogger().log(Level.SEVERE, "Load game " + buildWorld.getPath(), e);
+            try {
+                game.disable();
+            } catch (Exception f) {
+                plugin().getLogger().log(Level.SEVERE, "Disable game " + buildWorld.getPath(), e);
+            }
+            return false;
+        }
+        return true;
+    }
+
+    public boolean startGame(BuildWorld buildWorld, World world) {
+        final Game game = new Game(buildWorld, world);
+        try {
+            game.enable();
+        } catch (Exception e) {
+            plugin().getLogger().log(Level.SEVERE, "Enable game " + buildWorld.getPath(), e);
             try {
                 game.disable();
             } catch (Exception f) {
