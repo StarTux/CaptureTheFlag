@@ -434,7 +434,7 @@ public final class Game {
                 player.setFireTicks(0);
                 player.setFallDistance(0f);
                 player.setGameMode(GameMode.SURVIVAL);
-                player.getInventory().addItem(new ItemStack(Material.EMERALD, 3));
+                giveReward(player, 3);
                 if (games().getSave().isEvent()) {
                     Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + player.getName());
                 }
@@ -538,7 +538,7 @@ public final class Game {
         GameTeam killerTeam = getTeam(killer);
         if (killerTeam == null) return;
         if (playerTeam.getTeam() == killerTeam.getTeam()) return;
-        killer.getWorld().dropItem(killer.getLocation(), new ItemStack(Material.EMERALD, 5)).setPickupDelay(0);
+        giveReward(killer, 5);
         // Player Kill
         log(killer.getName() + " killed " + player.getName());
         if (games().getSave().isEvent()) {
@@ -574,7 +574,7 @@ public final class Game {
         if (gameKiller == null) return;
         if (event.getEntity().getEntitySpawnReason() == SpawnReason.SLIME_SPLIT) return;
         event.setDroppedExp(event.getDroppedExp() * 10);
-        event.getDrops().add(new ItemStack(Material.EMERALD, 1 + random.nextInt(3)));
+        giveReward(killer, 1 + random.nextInt(3));
         // Creep Kill
         log(killer.getName() + " killed a creep");
         if (games().getSave().isEvent()) {
@@ -1065,6 +1065,24 @@ public final class Game {
             player.sendMessage(text("Your tamed wolf has been spawned", gamePlayer.getTeam().getTextColor()));
             break;
         default: break;
+        }
+    }
+
+    public void giveReward(Player player, int amount) {
+        if (amount < 1) return;
+        final int roll = random.nextInt(3);
+        switch (roll) {
+        case 0:
+            player.getInventory().addItem(new ItemStack(Material.EMERALD, amount));
+            break;
+        case 1:
+            player.getInventory().addItem(new ItemStack(Material.DIAMOND, amount));
+            break;
+        case 2:
+            player.getInventory().addItem(Mytems.RUBY.createItemStack(amount));
+            break;
+        default:
+            throw new IllegalStateException("roll = " + roll);
         }
     }
 }
