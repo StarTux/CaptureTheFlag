@@ -115,13 +115,22 @@ public final class Game {
         this.buildWorld = buildWorld;
     }
 
+    public Game(final BuildWorld buildWorld, final World world) {
+        this.buildWorld = buildWorld;
+        this.world = world;
+    }
+
     public static Game in(World world) {
         return Games.games().getGameMap().get(world.getName());
     }
 
-    public static void applyGameIn(World world, Consumer<Game> callback) {
+    public static boolean applyGameIn(World world, Consumer<Game> callback) {
         Game game = in(world);
-        if (game != null) callback.accept(game);
+        if (game == null) {
+            return false;
+        }
+        callback.accept(game);
+        return true;
     }
 
     public static Game of(Entity entity) {
@@ -129,7 +138,11 @@ public final class Game {
     }
 
     public void enable() {
-        loadWorld();
+        if (world == null) {
+            loadWorld();
+        } else {
+            prepareWorld();
+        }
     }
 
     private void onWorldLoaded() {
@@ -157,6 +170,7 @@ public final class Game {
             player.teleport(Bukkit.getWorlds().get(0).getSpawnLocation());
             player.setGameMode(GameMode.ADVENTURE);
             player.getInventory().clear();
+            player.getEnderChest().clear();
             player.setHealth(20.0);
             player.setFoodLevel(20);
             player.setSaturation(20f);
@@ -192,27 +206,33 @@ public final class Game {
 
     private void loadWorld() {
         buildWorld.makeLocalCopyAsync(w -> {
-                if (w == null) throw new IllegalStateException("Loading world " + buildWorld.getPath());
                 this.world = w;
-                this.loadedWorldName = world.getName();
-                world.setGameRule(GameRule.DO_IMMEDIATE_RESPAWN, false);
-                world.setGameRule(GameRule.NATURAL_REGENERATION, true);
-                world.setGameRule(GameRule.DO_FIRE_TICK, false);
-                world.setGameRule(GameRule.DO_ENTITY_DROPS, true);
-                world.setGameRule(GameRule.DO_MOB_LOOT, true);
-                world.setGameRule(GameRule.DO_MOB_SPAWNING, false);
-                world.setGameRule(GameRule.DO_TILE_DROPS, true);
-                world.setGameRule(GameRule.SHOW_DEATH_MESSAGES, true);
-                world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, true);
-                world.setGameRule(GameRule.DO_WEATHER_CYCLE, false);
-                world.setGameRule(GameRule.MOB_GRIEFING, true);
-                world.setGameRule(GameRule.KEEP_INVENTORY, true);
-                world.setGameRule(GameRule.RANDOM_TICK_SPEED, 0);
-                world.setDifficulty(Difficulty.PEACEFUL);
-                world.setTime(0L);
-                world.setPVP(true);
-                onWorldLoaded();
+                prepareWorld();
             });
+    }
+
+    private void prepareWorld() {
+        if (world == null) {
+            throw new IllegalStateException("World not loaded " + buildWorld.getPath());
+        }
+        this.loadedWorldName = world.getName();
+        world.setGameRule(GameRule.DO_IMMEDIATE_RESPAWN, false);
+        world.setGameRule(GameRule.NATURAL_REGENERATION, true);
+        world.setGameRule(GameRule.DO_FIRE_TICK, false);
+        world.setGameRule(GameRule.DO_ENTITY_DROPS, true);
+        world.setGameRule(GameRule.DO_MOB_LOOT, true);
+        world.setGameRule(GameRule.DO_MOB_SPAWNING, false);
+        world.setGameRule(GameRule.DO_TILE_DROPS, true);
+        world.setGameRule(GameRule.SHOW_DEATH_MESSAGES, true);
+        world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, true);
+        world.setGameRule(GameRule.DO_WEATHER_CYCLE, false);
+        world.setGameRule(GameRule.MOB_GRIEFING, true);
+        world.setGameRule(GameRule.KEEP_INVENTORY, true);
+        world.setGameRule(GameRule.RANDOM_TICK_SPEED, 0);
+        world.setDifficulty(Difficulty.PEACEFUL);
+        world.setTime(0L);
+        world.setPVP(true);
+        onWorldLoaded();
     }
 
     private void loadAreas() {
@@ -347,6 +367,7 @@ public final class Game {
         for (GamePlayer gp : gpList) {
             Player player = gp.getPlayer();
             player.getInventory().clear();
+            player.getEnderChest().clear();
             player.setHealth(20.0);
             player.setFoodLevel(20);
             player.setSaturation(20f);
@@ -355,6 +376,7 @@ public final class Game {
             player.setGameMode(GameMode.ADVENTURE);
             teleportToSpawn(player);
         }
+        buildWorld.announceMap(world);
     }
 
     public GameTeam getTeam(Player player) {
@@ -434,7 +456,8 @@ public final class Game {
                 player.setFireTicks(0);
                 player.setFallDistance(0f);
                 player.setGameMode(GameMode.SURVIVAL);
-                player.getInventory().addItem(new ItemStack(Material.EMERALD, 3));
+                player.getInventory().addItem(new ItemStack(Material.STONE_SWORD));
+                giveReward(player, 3);
                 if (games().getSave().isEvent()) {
                     Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ml add " + player.getName());
                 }
@@ -538,7 +561,7 @@ public final class Game {
         GameTeam killerTeam = getTeam(killer);
         if (killerTeam == null) return;
         if (playerTeam.getTeam() == killerTeam.getTeam()) return;
-        killer.getWorld().dropItem(killer.getLocation(), new ItemStack(Material.EMERALD, 5)).setPickupDelay(0);
+        giveReward(killer, 5);
         // Player Kill
         log(killer.getName() + " killed " + player.getName());
         if (games().getSave().isEvent()) {
@@ -574,7 +597,7 @@ public final class Game {
         if (gameKiller == null) return;
         if (event.getEntity().getEntitySpawnReason() == SpawnReason.SLIME_SPLIT) return;
         event.setDroppedExp(event.getDroppedExp() * 10);
-        event.getDrops().add(new ItemStack(Material.EMERALD, 1 + random.nextInt(3)));
+        giveReward(killer, 1 + random.nextInt(3));
         // Creep Kill
         log(killer.getName() + " killed a creep");
         if (games().getSave().isEvent()) {
@@ -1065,6 +1088,24 @@ public final class Game {
             player.sendMessage(text("Your tamed wolf has been spawned", gamePlayer.getTeam().getTextColor()));
             break;
         default: break;
+        }
+    }
+
+    public void giveReward(Player player, int amount) {
+        if (amount < 1) return;
+        final int roll = random.nextInt(3);
+        switch (roll) {
+        case 0:
+            player.getInventory().addItem(new ItemStack(Material.EMERALD, amount));
+            break;
+        case 1:
+            player.getInventory().addItem(new ItemStack(Material.DIAMOND, amount));
+            break;
+        case 2:
+            player.getInventory().addItem(Mytems.RUBY.createItemStack(amount));
+            break;
+        default:
+            throw new IllegalStateException("roll = " + roll);
         }
     }
 }

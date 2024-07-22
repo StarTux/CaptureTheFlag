@@ -4,11 +4,14 @@ import com.cavetale.core.command.AbstractCommand;
 import com.cavetale.core.command.CommandArgCompleter;
 import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
+import com.cavetale.core.event.minigame.MinigameMatchType;
 import com.cavetale.core.item.ItemKinds;
 import com.cavetale.core.playercache.PlayerCache;
 import com.cavetale.mytems.util.Gui;
 import com.winthier.creative.BuildWorld;
+import com.winthier.creative.vote.MapVote;
 import java.util.List;
+import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -26,11 +29,14 @@ public final class CaptureTheFlagAdminCommand extends AbstractCommand<CaptureThe
     protected void onEnable() {
         rootNode.addChild("start").arguments("<map>")
             .description("Start the game")
-            .completers(CommandArgCompleter.supplyList(() -> List.copyOf(Games.games().getMaps().keySet())))
+            .completers(CommandArgCompleter.supplyList(() -> List.copyOf(games().getMaps().keySet())))
             .senderCaller(this::start);
         rootNode.addChild("stop").denyTabCompletion()
             .description("Stop the game")
             .senderCaller(this::stop);
+        rootNode.addChild("startvote").denyTabCompletion()
+            .description("Start a map vote")
+            .senderCaller(this::startVote);
         rootNode.addChild("skip").denyTabCompletion()
             .description("Skip timer")
             .playerCaller(this::skip);
@@ -91,9 +97,9 @@ public final class CaptureTheFlagAdminCommand extends AbstractCommand<CaptureThe
 
     private boolean start(CommandSender sender, String[] args) {
         if (args.length != 1) return false;
-        BuildWorld buildWorld = Games.games().getMaps().get(args[0]);
+        BuildWorld buildWorld = games().getMaps().get(args[0]);
         if (buildWorld == null) throw new CommandWarn("Map not found: " + args[0]);
-        Games.games().startGame(buildWorld);
+        games().startGame(buildWorld);
         sender.sendMessage(text("Game starting: " + buildWorld.getName(), YELLOW));
         return true;
     }
@@ -112,6 +118,17 @@ public final class CaptureTheFlagAdminCommand extends AbstractCommand<CaptureThe
             }
             sender.sendMessage(text("Stopped " + count + " game(s)", YELLOW));
         }
+    }
+
+    private void startVote(CommandSender sender) {
+        MapVote.start(MinigameMatchType.CAPTURE_THE_FLAG, v -> {
+                v.setTitle(Games.TITLE);
+                v.setLobbyWorld(Bukkit.getWorlds().get(0));
+                v.setCallback(result -> {
+                        games().startGame(result.getBuildWorldWinner(), result.getLocalWorldCopy());
+                    });
+                v.setAvoidRepetition(1);
+            });
     }
 
     private void skip(Player player) {

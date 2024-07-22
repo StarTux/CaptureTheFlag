@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -41,8 +42,18 @@ public final class EventListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     private void onPlayerJoin(PlayerJoinEvent event) {
-        Game game = Game.of(event.getPlayer());
-        if (game != null) game.onPlayerJoin(event);
+        final Player player = event.getPlayer();
+        if (Game.applyGameIn(player.getWorld(), game -> game.onPlayerJoin(event))) {
+            return;
+        }
+        player.setGameMode(GameMode.ADVENTURE);
+        player.getInventory().clear();
+        player.getEnderChest().clear();
+        player.setHealth(20.0);
+        player.setFoodLevel(20);
+        player.setSaturation(20f);
+        player.setFireTicks(0);
+        player.setFallDistance(0f);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
