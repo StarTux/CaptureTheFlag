@@ -673,7 +673,11 @@ public final class Game {
                                        text((seconds % 60), GREEN), text("s", GRAY));
         bossBar.name(textOfChildren(text("Play ", GREEN), timeComponent));
         bossBar.progress(Math.max(0f, Math.min(1f, (float) ticksLeft / (float) GAME_TIME_TICKS)));
-        if (stateTicks > GAME_TIME_TICKS) return GameState.END;
+        final int redScore = teamMap.get(Team.RED).getScore();
+        final int blueScore = teamMap.get(Team.BLUE).getScore();
+        if (stateTicks > GAME_TIME_TICKS || Math.abs(redScore - blueScore) >= 3) {
+            return GameState.END;
+        }
         spawnCreep();
         if (didScore) {
             if (didScoreCooldown > 0) {
