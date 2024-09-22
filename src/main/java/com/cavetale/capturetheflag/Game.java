@@ -110,6 +110,7 @@ public final class Game {
     final Map<Vec3i, UUID> landMines = new HashMap<>();
     // Constants
     public static final int INIT_DEATH_TICKS = 200;
+    public static final int DEATH_TICK_INCREASE = 100;
 
     public Game(final BuildWorld buildWorld) {
         this.buildWorld = buildWorld;
@@ -549,7 +550,7 @@ public final class Game {
         gamePlayer.setDead(true);
         final int totalDeathTicks = gamePlayer.getTotalDeathTicks();
         gamePlayer.setDeathTicks(Math.min(60 * 20, totalDeathTicks));
-        gamePlayer.setTotalDeathTicks(totalDeathTicks + INIT_DEATH_TICKS);
+        gamePlayer.setTotalDeathTicks(totalDeathTicks + DEATH_TICK_INCREASE);
         gamePlayer.setDeaths(gamePlayer.getDeaths() + 1);
         GameTeam playerTeam = getTeam(player);
         if (playerTeam == null) return;
