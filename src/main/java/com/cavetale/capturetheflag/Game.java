@@ -320,7 +320,7 @@ public final class Game {
             Villager villager = merchantBlock.getEntity();
             if (villager != null && !villager.isDead()) continue;
             villager = world.spawn(merchantBlock.getVector().toCenterFloorLocation(world), Villager.class, e -> {
-                    e.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0.0);
+                    e.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0.0);
                     e.setProfession(merchantBlock.getType().getProfession());
                     e.setVillagerLevel(5);
                     e.setRecipes(List.of());
@@ -1080,11 +1080,11 @@ public final class Game {
                     e.setAdult();
                     e.setTamed(true);
                     e.setOwner(player);
-                    e.getAttribute(Attribute.GENERIC_MOVEMENT_SPEED).setBaseValue(0.5);
+                    e.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0.5);
                     final double health = 40.0;
-                    e.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(health);
+                    e.getAttribute(Attribute.MAX_HEALTH).setBaseValue(health);
                     e.setHealth(health);
-                    e.getAttribute(Attribute.GENERIC_ATTACK_DAMAGE).setBaseValue(6.0);
+                    e.getAttribute(Attribute.ATTACK_DAMAGE).setBaseValue(6.0);
                     e.setCollarColor(gamePlayer.getTeam().getDyeColor());
                 });
             if (wolf == null) return;
