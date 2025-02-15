@@ -495,11 +495,15 @@ public final class Game {
             }
             // Team Win
             if (winningTeam != null && games().getSave().isEvent()) {
-                for (UUID uuid : teamMap.get(winningTeam).getMembers()) {
-                    GamePlayer gamePlayer = getGamePlayer(uuid);
+                for (GamePlayer gamePlayer : playerMap.values()) {
+                    final UUID uuid = gamePlayer.getUuid();
                     if (gamePlayer == null) continue;
-                    games().getSave().addScore(uuid, 5);
-                    gamePlayer.addMoney(1000);
+                    if (teamMap.get(winningTeam).getMembers().contains(uuid)) {
+                        games().getSave().addScore(uuid, 10);
+                        gamePlayer.addMoney(1000);
+                    } else {
+                        games().getSave().addScore(uuid, 1);
+                    }
                 }
                 games().save();
             }
@@ -833,7 +837,7 @@ public final class Game {
                         playerGameTeam.setScore(playerGameTeam.getScore() + 1);
                         // Return Flag
                         if (games().getSave().isEvent()) {
-                            games().getSave().addScore(player.getUniqueId(), 25);
+                            games().getSave().addScore(player.getUniqueId(), 30);
                             games().computeHighscores();
                             games().save();
                             gamePlayer.addMoney(1000);
