@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Location;
 import org.bukkit.entity.ItemDisplay;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 /**
@@ -42,5 +43,10 @@ public final class GameFlag {
     public void teleport(Location location) {
         entity.teleport(location);
         this.vector = Vec3i.of(location);
+    }
+
+    public boolean isHolder(Player player) {
+        return holder != null
+            && holder.equals(player.getUniqueId());
     }
 }

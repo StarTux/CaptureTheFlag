@@ -71,6 +71,7 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Merchant;
 import org.bukkit.inventory.MerchantRecipe;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
@@ -814,6 +815,8 @@ public final class Game {
                                 announce(text(player.getName() + " picked up the " + team.displayName + " flag", YELLOW));
                                 gameFlag.setHolder(uuid);
                                 log(player.getName() + " picked up the " + team.displayName + " flag");
+                                player.removePotionEffect(PotionEffectType.INVISIBILITY);
+                                player.removePotionEffect(PotionEffectType.SPEED);
                             }
                         }
                     }
@@ -1116,5 +1119,13 @@ public final class Game {
         default:
             throw new IllegalStateException("roll = " + roll);
         }
+    }
+
+    public boolean isFlagHolder(Player player) {
+        for (GameTeam team : teamMap.values()) {
+            if (team.getGameFlag() == null) continue;
+            if (team.getGameFlag().isHolder(player)) return true;
+        }
+        return false;
     }
 }

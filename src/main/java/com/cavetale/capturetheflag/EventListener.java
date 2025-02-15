@@ -12,6 +12,7 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.EventHandler;
@@ -26,12 +27,14 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.EntityTargetEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.spigotmc.event.player.PlayerSpawnLocationEvent;
 import static com.cavetale.capturetheflag.Games.games;
 
@@ -185,5 +188,31 @@ public final class EventListener implements Listener {
     @EventHandler
     private void onEntityTarget(EntityTargetEvent event) {
         Game.applyGameIn(event.getEntity().getWorld(), game -> game.onEntityTarget(event));
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    private void onPlayerEnderPearlTeleport(PlayerTeleportEvent event) {
+        final Player player = event.getPlayer();
+        switch (event.getCause()) {
+        case ENDER_PEARL:
+            Game.applyGameIn(player.getWorld(), game -> {
+                    if (game.isFlagHolder(player)) {
+                        event.setCancelled(true);
+                    }
+                });
+            break;
+        default: break;
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    private void onPlayerThrowEnderPearl(ProjectileLaunchEvent event) {
+        if (event.getEntity().getType() != EntityType.ENDER_PEARL) return;
+        if (!(event.getEntity().getShooter() instanceof Player player)) return;
+        Game.applyGameIn(player.getWorld(), game -> {
+                if (game.isFlagHolder(player)) {
+                    event.setCancelled(true);
+                }
+            });
     }
 }
