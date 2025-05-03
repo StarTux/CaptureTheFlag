@@ -912,6 +912,9 @@ public final class Game {
             event.setCancelled(true);
             return;
         }
+        if (block.getType() == Material.FIRE) {
+            return;
+        }
         final int x = block.getX();
         final int z = block.getZ();
         for (GameTeam gameTeam : teamMap.values()) {
