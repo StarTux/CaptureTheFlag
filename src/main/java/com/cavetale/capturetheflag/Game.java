@@ -1108,7 +1108,7 @@ public final class Game {
         final int roll = random.nextInt(3);
         switch (roll) {
         case 0:
-            player.getInventory().addItem(new ItemStack(Material.EMERALD, amount));
+            player.getInventory().addItem(new ItemStack(Material.AMETHYST_SHARD, amount));
             break;
         case 1:
             player.getInventory().addItem(new ItemStack(Material.DIAMOND, amount));
