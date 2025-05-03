@@ -1051,14 +1051,14 @@ public final class Game {
         }
         Vec3i vec = Vec3i.of(block);
         if (Tag.PRESSURE_PLATES.isTagged(block.getType()) && landMines.containsKey(vec)) {
-            UUID owner = landMines.remove(vec);
+            final UUID owner = landMines.remove(vec);
             block.setType(Material.AIR);
-            Location loc = block.getLocation().add(0.5, 0.5, 0.5);
+            final Location loc = block.getLocation().add(0.5, 0.5, 0.5);
             final float power = 4f;
             final boolean fire = true;
             final boolean breakBlocks = true;
-            block.getWorld().createExplosion(loc, power, fire, breakBlocks);
             log(String.format("%s triggered land mine at %d,%d,%d", player.getName(), block.getX(), block.getY(), block.getZ()));
+            Bukkit.getScheduler().runTask(plugin(), () -> block.getWorld().createExplosion(loc, power, fire, breakBlocks));
         }
     }
 
