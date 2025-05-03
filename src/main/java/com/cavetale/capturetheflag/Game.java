@@ -913,7 +913,9 @@ public final class Game {
             event.setCancelled(true);
             return;
         }
-        if (block.getType() == Material.FIRE) {
+        if (block.getType() == Material.FIRE
+            || block.getType() == Material.SHORT_GRASS
+            || block.getType() == Material.TALL_GRASS) {
             return;
         }
         final int x = block.getX();
