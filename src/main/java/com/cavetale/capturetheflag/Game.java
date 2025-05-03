@@ -506,6 +506,7 @@ public final class Game {
                         games().getSave().addScore(uuid, 1);
                     }
                 }
+                games().computeHighscores();
                 games().save();
             }
             MapReview.start(world, buildWorld).remindAll();
