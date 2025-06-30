@@ -1102,7 +1102,7 @@ public final class Game {
                 });
             if (wolf == null) return;
             wolf.setAdult();
-            wolf.getWorld().playSound(wolf.getLocation(), Sound.ENTITY_WOLF_HOWL, 1f, 1f);
+            wolf.getWorld().playSound(wolf.getLocation(), Sound.ENTITY_WOLF_AMBIENT, 1f, 1f);
             player.sendMessage(text("Your tamed wolf has been spawned", gamePlayer.getTeam().getTextColor()));
             break;
         default: break;
