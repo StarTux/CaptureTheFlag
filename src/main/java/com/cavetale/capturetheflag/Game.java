@@ -878,16 +878,46 @@ public final class Game {
             if (bb.getHeight() != 1.0) continue;
             if (!block.getRelative(0, 1, 0).getCollisionShape().getBoundingBoxes().isEmpty()) return null;
             if (!block.getRelative(0, 2, 0).getCollisionShape().getBoundingBoxes().isEmpty()) return null;
-            List<EntityType> types = List.of(EntityType.ZOMBIE,
-                                             EntityType.CREEPER,
-                                             EntityType.SKELETON,
-                                             EntityType.SPIDER,
-                                             EntityType.WITCH,
-                                             EntityType.ENDERMAN,
-                                             EntityType.SLIME,
-                                             EntityType.WITHER_SKELETON,
-                                             EntityType.BLAZE,
-                                             EntityType.PILLAGER);
+            final List<EntityType> types;
+            final int minutes = stateTicks / (20 * 60);
+            if (minutes < 5) {
+                types = List.of(EntityType.ZOMBIE,
+                                EntityType.CREEPER,
+                                EntityType.SKELETON,
+                                EntityType.SPIDER,
+                                EntityType.SLIME);
+            } else if (minutes < 10) {
+                types = List.of(EntityType.ZOMBIE,
+                                EntityType.DROWNED,
+                                EntityType.CREEPER,
+                                EntityType.SKELETON,
+                                EntityType.BOGGED,
+                                EntityType.HUSK,
+                                EntityType.SPIDER,
+                                EntityType.CAVE_SPIDER,
+                                EntityType.SLIME,
+                                EntityType.WITCH,
+                                EntityType.BLAZE,
+                                EntityType.PILLAGER);
+            } else {
+                types = List.of(EntityType.ZOMBIE,
+                                EntityType.CREEPER,
+                                EntityType.SKELETON,
+                                EntityType.BOGGED,
+                                EntityType.HUSK,
+                                EntityType.SPIDER,
+                                EntityType.CAVE_SPIDER,
+                                EntityType.SLIME,
+                                EntityType.WITCH,
+                                EntityType.WITHER_SKELETON,
+                                EntityType.BLAZE,
+                                EntityType.PILLAGER,
+                                EntityType.WITHER_SKELETON,
+                                EntityType.RAVAGER,
+                                EntityType.BREEZE,
+                                EntityType.EVOKER,
+                                EntityType.ENDERMAN);
+            }
             EntityType et = types.get(random.nextInt(types.size()));
             Location location = block.getLocation().add(0.5, 1.0, 0.5);
             if (location.getNearbyEntitiesByType(Mob.class, 32.0).size() > 4) return null;
