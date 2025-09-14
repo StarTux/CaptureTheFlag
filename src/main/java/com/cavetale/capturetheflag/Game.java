@@ -10,6 +10,7 @@ import com.cavetale.core.struct.Cuboid;
 import com.cavetale.core.struct.Vec2i;
 import com.cavetale.core.struct.Vec3i;
 import com.cavetale.mytems.Mytems;
+import com.destroystokyo.paper.MaterialTags;
 import com.winthier.creative.BuildWorld;
 import com.winthier.creative.file.Files;
 import com.winthier.creative.review.MapReview;
@@ -58,6 +59,7 @@ import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
@@ -112,6 +114,7 @@ public final class Game {
     // Constants
     public static final int INIT_DEATH_TICKS = 200;
     public static final int DEATH_TICK_INCREASE = 100;
+    private GamePlayer creatureSpawnedBy;
 
     public Game(final CaptureTheFlagPlugin plugin, final BuildWorld buildWorld, final World world) {
         this.plugin = plugin;
@@ -958,11 +961,7 @@ public final class Game {
             EntityType et = types.get(random.nextInt(types.size()));
             Location location = block.getLocation().add(0.5, 1.0, 0.5);
             if (location.getNearbyEntitiesByType(Mob.class, 32.0).size() > 4) return null;
-            return world.spawnEntity(location, et, SpawnReason.CUSTOM, e -> {
-                    if (e instanceof Mob mob) mob.setRemoveWhenFarAway(false);
-                    if (e instanceof Zombie zombie) zombie.setShouldBurnInDay(false);
-                    if (e instanceof AbstractSkeleton skeleton) skeleton.setShouldBurnInDay(false);
-                });
+            return world.spawnEntity(location, et, SpawnReason.CUSTOM, this::prepSpawnedEntity);
         }
         return null;
     }
@@ -1050,6 +1049,11 @@ public final class Game {
     }
 
     public void onEntityTarget(EntityTargetEvent event) {
+        onEntityTargetOwner(event);
+        onEntityTargetTeam(event);
+    }
+
+    private void onEntityTargetOwner(EntityTargetEvent event) {
         final Player owner = getEntityOwner(event.getEntity());
         if (owner == null) return;
         final Player target = getEntityOwner(event.getTarget());
@@ -1061,6 +1065,21 @@ public final class Game {
         if (gameOwner.getTeam() == gameTarget.getTeam()) {
             event.setCancelled(true);
             return;
+        }
+    }
+
+    private void onEntityTargetTeam(EntityTargetEvent event) {
+        final Team team = Team.ofEntity(event.getEntity());
+        if (team == null) return;
+        if (event.getTarget() instanceof Player target) {
+            final GamePlayer gamePlayer = getGamePlayer(target);
+            if (gamePlayer == null) return;
+            if (gamePlayer.getTeam() == team) {
+                event.setCancelled(true);
+            }
+        } else {
+            final Team team2 = Team.ofEntity(event.getTarget());
+            if (team == team2) event.setCancelled(true);
         }
     }
 
@@ -1172,8 +1191,24 @@ public final class Game {
             wolf.getWorld().playSound(wolf.getLocation(), Sound.ENTITY_WOLF_AMBIENT, 1f, 1f);
             player.sendMessage(text("Your tamed wolf has been spawned", gamePlayer.getTeam().getTextColor()));
             break;
-        default: break;
+        default:
+            if (MaterialTags.SPAWN_EGGS.isTagged(item.getType())) {
+                creatureSpawnedBy = gamePlayer;
+                Bukkit.getScheduler().runTask(plugin, () -> creatureSpawnedBy = null);
+            }
         }
+    }
+
+    public void onCreatureSpawn(CreatureSpawnEvent event) {
+        if (creatureSpawnedBy == null) return;
+        final Team team = creatureSpawnedBy.getTeam();
+        creatureSpawnedBy = null;
+        System.out.println(event.getEventName() + " " + event.getSpawnReason());
+        if (event.getSpawnReason() != SpawnReason.SPAWNER_EGG) return;
+        team.setEntity(event.getEntity());
+        event.getEntity().customName(team.displayComponent());
+        event.getEntity().setCustomNameVisible(true);
+        prepSpawnedEntity(event.getEntity());
     }
 
     public void giveReward(Player player, int amount) {
@@ -1200,5 +1235,11 @@ public final class Game {
             if (team.getGameFlag().isHolder(player)) return true;
         }
         return false;
+    }
+
+    public void prepSpawnedEntity(Entity entity) {
+        if (entity instanceof Mob mob) mob.setRemoveWhenFarAway(false);
+        if (entity instanceof Zombie zombie) zombie.setShouldBurnInDay(false);
+        if (entity instanceof AbstractSkeleton skeleton) skeleton.setShouldBurnInDay(false);
     }
 }

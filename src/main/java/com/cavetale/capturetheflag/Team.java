@@ -8,6 +8,9 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Color;
 import org.bukkit.DyeColor;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.entity.Entity;
+import org.bukkit.persistence.PersistentDataType;
 import static net.kyori.adventure.text.Component.text;
 
 @Getter @RequiredArgsConstructor
@@ -36,5 +39,15 @@ public enum Team {
 
     public Component displayComponent() {
         return text(displayName, textColor);
+    }
+
+    public void setEntity(Entity entity) {
+        entity.getPersistentDataContainer().set(new NamespacedKey(CaptureTheFlagPlugin.plugin(), "team"), PersistentDataType.STRING, name());
+    }
+
+    public static Team ofEntity(Entity entity) {
+        final String value = entity.getPersistentDataContainer().getOrDefault(new NamespacedKey(CaptureTheFlagPlugin.plugin(), "team"), PersistentDataType.STRING, null);
+        if (value == null) return null;
+        return Team.valueOf(value.toUpperCase());
     }
 }

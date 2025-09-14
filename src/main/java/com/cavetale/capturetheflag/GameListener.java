@@ -17,6 +17,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
@@ -164,6 +165,11 @@ public final class GameListener implements Listener {
     @EventHandler
     private void onEntityTarget(EntityTargetEvent event) {
         Game.applyGameIn(event.getEntity().getWorld(), game -> game.onEntityTarget(event));
+    }
+
+    @EventHandler
+    private void onCreatureSpawn(CreatureSpawnEvent event) {
+        Game.applyGameIn(event.getEntity().getWorld(), game -> game.onCreatureSpawn(event));
     }
 
     @EventHandler(ignoreCancelled = true)
