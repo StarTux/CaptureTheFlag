@@ -170,6 +170,8 @@ public final class Game {
             gameTeam.disable();
         }
         for (Player player : world.getPlayers()) {
+            player.eject();
+            player.leaveVehicle();
             player.teleport(plugin.getLobby().getSpawnLocation());
             player.setGameMode(GameMode.ADVENTURE);
             player.getInventory().clear();
@@ -434,6 +436,8 @@ public final class Game {
         Vec3i vec = spawns.get(random.nextInt(spawns.size()));
         Location location = vec.toCenterFloorLocation(world);
         location.setYaw((float) random.nextDouble() * 360f);
+        player.eject();
+        player.leaveVehicle();
         player.teleport(location);
     }
 
