@@ -366,7 +366,6 @@ public final class Game {
 
     private void makeTeams() {
         for (Player player : plugin.getLobby().getPlayers()) {
-            if (player.getGameMode() == GameMode.SPECTATOR) continue;
             GamePlayer gp = new GamePlayer(player);
             playerMap.put(gp.getUuid(), gp);
         }
