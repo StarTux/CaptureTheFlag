@@ -114,7 +114,7 @@ public final class Game {
     final Map<Vec3i, UUID> landMines = new HashMap<>();
     // Constants
     public static final int INIT_DEATH_TICKS = 200;
-    public static final int DEATH_TICK_INCREASE = 100;
+    public static final int DEATH_TICK_INCREASE = 60;
     private GamePlayer creatureSpawnedBy;
 
     public Game(final CaptureTheFlagPlugin plugin, final BuildWorld buildWorld, final World world) {
@@ -439,9 +439,14 @@ public final class Game {
         Vec3i vec = spawns.get(random.nextInt(spawns.size()));
         Location location = vec.toCenterFloorLocation(world);
         location.setYaw((float) random.nextDouble() * 360f);
+        final Entity vehicle = player.getVehicle();
         player.eject();
         player.leaveVehicle();
         player.teleport(location);
+        if (vehicle != null) {
+            vehicle.teleport(location);
+        }
+        TitlePlugin.getInstance().setColor(player, gp.getTeam().getTextColor());
     }
 
     protected List<Vec3i> findSpawnLocations(Team team) {
@@ -644,9 +649,11 @@ public final class Game {
         if (gameKiller == null) return;
         if (event.getEntity().getEntitySpawnReason() == SpawnReason.SLIME_SPLIT) return;
         event.setDroppedExp(event.getDroppedExp() * 10);
-        giveReward(killer, 1 + random.nextInt(3));
+        final int tier = stateTicks / (20 * 60 * 5);
+        final int amount = 1 + random.nextInt(3 + tier);
+        giveReward(killer, amount);
         // Creep Kill
-        log(killer.getName() + " killed a creep");
+        log(killer.getName() + " killed a creep: " + event.getEntity().getType() + ": " + amount);
         if (games().getSave().isEvent()) {
             games().getSave().addScore(killer.getUniqueId(), 1);
             games().computeHighscores();
@@ -908,7 +915,7 @@ public final class Game {
                     }
                 }
                 Location location = block.getLocation().add(0.5, 0.5, 0.5);
-                if (location.getNearbyEntitiesByType(Mob.class, 32.0).size() > 3) return null;
+                if (location.getNearbyEntitiesByType(Mob.class, 24.0).size() > 3) return null;
                 return world.spawn(location, Guardian.class, e -> { }, SpawnReason.CUSTOM);
             }
             // Not liquid
@@ -960,7 +967,7 @@ public final class Game {
             }
             EntityType et = types.get(random.nextInt(types.size()));
             Location location = block.getLocation().add(0.5, 1.0, 0.5);
-            if (location.getNearbyEntitiesByType(Mob.class, 32.0).size() > 4) return null;
+            if (location.getNearbyEntitiesByType(Mob.class, 24.0).size() > 4) return null;
             return world.spawnEntity(location, et, SpawnReason.CUSTOM, this::prepSpawnedEntity);
         }
         return null;
@@ -1049,6 +1056,7 @@ public final class Game {
     }
 
     public void onEntityTarget(EntityTargetEvent event) {
+        if (event.getTarget() == null) return;
         onEntityTargetOwner(event);
         onEntityTargetTeam(event);
     }
@@ -1201,6 +1209,10 @@ public final class Game {
 
     public void onCreatureSpawn(CreatureSpawnEvent event) {
         if (creatureSpawnedBy == null) return;
+        if (event.getSpawnReason() == SpawnReason.SLIME_SPLIT) {
+            event.setCancelled(true);
+            return;
+        }
         final Team team = creatureSpawnedBy.getTeam();
         creatureSpawnedBy = null;
         System.out.println(event.getEventName() + " " + event.getSpawnReason());

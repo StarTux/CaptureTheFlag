@@ -3,9 +3,12 @@ package com.cavetale.capturetheflag;
 import com.cavetale.core.event.hud.PlayerHudEvent;
 import com.cavetale.core.event.player.PlayerTPAEvent;
 import com.cavetale.core.event.player.PlayerTeamQuery;
+import com.destroystokyo.paper.MaterialTags;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.EntityType;
@@ -25,6 +28,7 @@ import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.EntityTargetEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
+import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
@@ -32,6 +36,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.inventory.ItemStack;
 
 @RequiredArgsConstructor
 public final class GameListener implements Listener {
@@ -196,5 +201,27 @@ public final class GameListener implements Listener {
                     event.setCancelled(true);
                 }
             });
+    }
+
+    @EventHandler
+    private void onPrepareItemCraft(PrepareItemCraftEvent event) {
+        if (event.getRecipe() == null) return;
+        final ItemStack result = event.getRecipe().getResult();
+        if (result == null) return;
+        final Material mat = result.getType();
+        boolean doNull = Tag.ITEMS_HEAD_ARMOR.isTagged(mat)
+            || Tag.ITEMS_CHEST_ARMOR.isTagged(mat)
+            || Tag.ITEMS_LEG_ARMOR.isTagged(mat)
+            || Tag.ITEMS_FOOT_ARMOR.isTagged(mat)
+            || Tag.ITEMS_SWORDS.isTagged(mat)
+            || MaterialTags.BOWS.isTagged(mat)
+            || Tag.ITEMS_PICKAXES.isTagged(mat)
+            || Tag.ITEMS_SHOVELS.isTagged(mat)
+            || Tag.ITEMS_AXES.isTagged(mat)
+            || mat.name().endsWith("_INGOT")
+            || mat == Material.BREAD;
+        if (doNull) {
+            event.getInventory().setResult(null);
+        }
     }
 }
