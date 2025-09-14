@@ -7,10 +7,12 @@ import com.cavetale.core.command.CommandWarn;
 import com.cavetale.core.event.minigame.MinigameMatchType;
 import com.cavetale.core.item.ItemKinds;
 import com.cavetale.core.playercache.PlayerCache;
+import com.cavetale.fam.trophy.Highscore;
 import com.cavetale.mytems.util.Gui;
 import com.winthier.creative.BuildWorld;
 import com.winthier.creative.vote.MapVote;
 import java.util.List;
+import net.kyori.adventure.text.Component;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -203,8 +205,11 @@ public final class CaptureTheFlagAdminCommand extends AbstractCommand<CaptureThe
     }
 
     private void scoreReward(CommandSender sender) {
-        int count = games().rewardScores();
+        final int count = games().rewardScores();
         sender.sendMessage(text("Rewarded " + count + " players", AQUA));
+        for (Component line : Highscore.rewardMoneyWithFeedback(plugin, games().getSave().getScores(), "Capture the Flag")) {
+            sender.sendMessage(line);
+        }
     }
 
     private boolean recipeList(CommandSender sender, String[] args) {
