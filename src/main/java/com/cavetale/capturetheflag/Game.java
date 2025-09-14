@@ -333,6 +333,7 @@ public final class Game {
                     e.setCollidable(false);
                     e.customName(textOfChildren(type.getComponent(), text(type.getDisplayName(), type.getTextColor())));
                     e.setCustomNameVisible(true);
+                    e.setSilent(true);
                 });
             merchantBlock.setEntity(villager);
         }
