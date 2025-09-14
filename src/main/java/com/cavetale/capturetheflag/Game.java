@@ -319,14 +319,19 @@ public final class Game {
 
     private void spawnMerchants() {
         for (MerchantBlock merchantBlock : merchantBlocks) {
+            final RecipeType type = merchantBlock.getType();
             Villager villager = merchantBlock.getEntity();
             if (villager != null && !villager.isDead()) continue;
             villager = world.spawn(merchantBlock.getVector().toCenterFloorLocation(world), Villager.class, e -> {
                     e.getAttribute(Attribute.MOVEMENT_SPEED).setBaseValue(0.0);
-                    e.setProfession(merchantBlock.getType().getProfession());
+                    e.getAttribute(Attribute.JUMP_STRENGTH).setBaseValue(0.0);
+                    e.getAttribute(Attribute.STEP_HEIGHT).setBaseValue(0.0);
+                    e.setProfession(type.getProfession());
                     e.setVillagerLevel(5);
                     e.setRecipes(List.of());
                     e.setCollidable(false);
+                    e.customName(textOfChildren(type.getComponent(), text(type.getDisplayName(), type.getTextColor())));
+                    e.setCustomNameVisible(true);
                 });
             merchantBlock.setEntity(villager);
         }
@@ -346,7 +351,7 @@ public final class Game {
             mr.setIngredients(ingredients);
             recipes.add(mr);
         }
-        Merchant merchant = Bukkit.createMerchant(type.getTitle());
+        Merchant merchant = Bukkit.createMerchant(text(type.getDisplayName()));
         merchant.setRecipes(recipes);
         player.openMerchant(merchant, true);
     }
