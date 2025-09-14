@@ -49,6 +49,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Guardian;
 import org.bukkit.entity.Mob;
+import org.bukkit.entity.PiglinAbstract;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Tameable;
@@ -1241,5 +1242,6 @@ public final class Game {
         if (entity instanceof Mob mob) mob.setRemoveWhenFarAway(false);
         if (entity instanceof Zombie zombie) zombie.setShouldBurnInDay(false);
         if (entity instanceof AbstractSkeleton skeleton) skeleton.setShouldBurnInDay(false);
+        if (entity instanceof PiglinAbstract piglin) piglin.setImmuneToZombification(true);
     }
 }
