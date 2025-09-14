@@ -232,6 +232,7 @@ public final class Game {
         world.setGameRule(GameRule.MOB_GRIEFING, true);
         world.setGameRule(GameRule.KEEP_INVENTORY, true);
         world.setGameRule(GameRule.RANDOM_TICK_SPEED, 0);
+        world.setGameRule(GameRule.LOCATOR_BAR, false);
         world.setDifficulty(Difficulty.PEACEFUL);
         world.setTime(0L);
         world.setPVP(true);
