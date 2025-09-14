@@ -48,6 +48,7 @@ public final class GameListener implements Listener {
         }
         // Not in a game
         if (plugin.getGames().getSave().isEvent() && !plugin.getGames().isEmpty()) {
+            plugin.getLogger().info("Late joining player " + player.getName() + "...");
             final Game game = plugin.getGames().getAnyGame();
             game.addPlayer(player);
         }
