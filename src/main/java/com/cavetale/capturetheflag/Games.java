@@ -13,7 +13,6 @@ import java.util.logging.Level;
 import lombok.Data;
 import net.kyori.adventure.text.Component;
 import org.bukkit.World;
-import static com.cavetale.capturetheflag.CaptureTheFlagPlugin.plugin;
 import static com.cavetale.core.font.Unicode.tiny;
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.Component.textOfChildren;
@@ -21,7 +20,7 @@ import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 @Data
 public final class Games {
-    private static Games instance;
+    private final CaptureTheFlagPlugin plugin;
     // Map actual loaded world name, NOT the map name
     private final Map<String, Game> gameMap = new HashMap<>();
     private File saveFile;
@@ -35,19 +34,15 @@ public final class Games {
     private List<Highscore> highscores = List.of();
     private List<Component> highscoreLines = List.of();
 
-    protected Games() {
-        instance = this;
-    }
-
     public static Games games() {
-        return instance;
+        return CaptureTheFlagPlugin.plugin().getGames();
     }
 
     public void enable() {
         loadConfig();
-        CaptureTheFlagPlugin.plugin().getDataFolder().mkdirs();
-        saveFile = new File(CaptureTheFlagPlugin.plugin().getDataFolder(), "save.json");
-        recipeSaveFile = new File(CaptureTheFlagPlugin.plugin().getDataFolder(), "recipes.json");
+        plugin.getDataFolder().mkdirs();
+        saveFile = new File(plugin.getDataFolder(), "save.json");
+        recipeSaveFile = new File(plugin.getDataFolder(), "recipes.json");
         load();
         loadRecipes();
         computeHighscores();
@@ -58,6 +53,14 @@ public final class Games {
             game.disable();
         }
         gameMap.clear();
+    }
+
+    public boolean isEmpty() {
+        return gameMap.isEmpty();
+    }
+
+    public Game getAnyGame() {
+        return gameMap.values().iterator().next();
     }
 
     public void loadConfig() {
@@ -83,15 +86,15 @@ public final class Games {
     }
 
     public boolean startGame(BuildWorld buildWorld) {
-        final Game game = new Game(buildWorld);
+        final Game game = new Game(plugin, buildWorld);
         try {
             game.enable();
         } catch (Exception e) {
-            plugin().getLogger().log(Level.SEVERE, "Load game " + buildWorld.getPath(), e);
+            plugin.getLogger().log(Level.SEVERE, "Load game " + buildWorld.getPath(), e);
             try {
                 game.disable();
             } catch (Exception f) {
-                plugin().getLogger().log(Level.SEVERE, "Disable game " + buildWorld.getPath(), e);
+                plugin.getLogger().log(Level.SEVERE, "Disable game " + buildWorld.getPath(), e);
             }
             return false;
         }
@@ -99,15 +102,15 @@ public final class Games {
     }
 
     public boolean startGame(BuildWorld buildWorld, World world) {
-        final Game game = new Game(buildWorld, world);
+        final Game game = new Game(plugin, buildWorld, world);
         try {
             game.enable();
         } catch (Exception e) {
-            plugin().getLogger().log(Level.SEVERE, "Enable game " + buildWorld.getPath(), e);
+            plugin.getLogger().log(Level.SEVERE, "Enable game " + buildWorld.getPath(), e);
             try {
                 game.disable();
             } catch (Exception f) {
-                plugin().getLogger().log(Level.SEVERE, "Disable game " + buildWorld.getPath(), e);
+                plugin.getLogger().log(Level.SEVERE, "Disable game " + buildWorld.getPath(), e);
             }
             return false;
         }

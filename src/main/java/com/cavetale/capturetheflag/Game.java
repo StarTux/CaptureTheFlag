@@ -75,7 +75,6 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
-import static com.cavetale.capturetheflag.CaptureTheFlagPlugin.plugin;
 import static com.cavetale.capturetheflag.Games.games;
 import static com.cavetale.capturetheflag.Items.items;
 import static com.cavetale.core.font.Unicode.tiny;
@@ -89,6 +88,7 @@ import static net.kyori.adventure.title.Title.title;
 
 @Data
 public final class Game {
+    private final CaptureTheFlagPlugin plugin;
     private final BuildWorld buildWorld;
     private String loadedWorldName; // loaded world name
     private World world;
@@ -113,13 +113,14 @@ public final class Game {
     public static final int INIT_DEATH_TICKS = 200;
     public static final int DEATH_TICK_INCREASE = 100;
 
-    public Game(final BuildWorld buildWorld) {
-        this.buildWorld = buildWorld;
-    }
-
-    public Game(final BuildWorld buildWorld, final World world) {
+    public Game(final CaptureTheFlagPlugin plugin, final BuildWorld buildWorld, final World world) {
+        this.plugin = plugin;
         this.buildWorld = buildWorld;
         this.world = world;
+    }
+
+    public Game(final CaptureTheFlagPlugin plugin, final BuildWorld buildWorld) {
+        this(plugin, buildWorld, null);
     }
 
     public static Game in(World world) {
@@ -159,7 +160,7 @@ public final class Game {
         loadChunks();
         spawnMerchants();
         makeTeams();
-        this.task = Bukkit.getScheduler().runTaskTimer(plugin(), this::tick, 1L, 1L);
+        this.task = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L);
         this.state = GameState.COUNTDOWN;
     }
 
@@ -169,7 +170,7 @@ public final class Game {
             gameTeam.disable();
         }
         for (Player player : world.getPlayers()) {
-            player.teleport(Bukkit.getWorlds().get(0).getSpawnLocation());
+            player.teleport(plugin.getLobby().getSpawnLocation());
             player.setGameMode(GameMode.ADVENTURE);
             player.getInventory().clear();
             player.getEnderChest().clear();
@@ -180,7 +181,7 @@ public final class Game {
             player.setFallDistance(0f);
         }
         if (world != null) {
-            world.removePluginChunkTickets(plugin());
+            world.removePluginChunkTickets(plugin);
             Files.deleteWorld(world);
             world = null;
         }
@@ -191,7 +192,7 @@ public final class Game {
     }
 
     public void log(String txt) {
-        plugin().getLogger().info("[" + loadedWorldName + "] " + txt);
+        plugin.getLogger().info("[" + loadedWorldName + "] " + txt);
     }
 
     public void announce(Component text) {
@@ -251,7 +252,7 @@ public final class Game {
         for (Area area : areasFile.find("spawn")) {
             Team team = Team.ofKey(area.getName());
             if (team == null) {
-                plugin().getLogger().severe("Invalid spawn: " + area);
+                plugin.getLogger().severe("Invalid spawn: " + area);
                 continue;
             }
             teamMap.get(team).getSpawns().add(area.toCuboid());
@@ -259,19 +260,19 @@ public final class Game {
         for (Area area : areasFile.find("flag")) {
             Team team = Team.ofKey(area.getName());
             if (team == null) {
-                plugin().getLogger().severe("Invalid flag: " + area);
+                plugin.getLogger().severe("Invalid flag: " + area);
                 continue;
             }
             teamMap.get(team).setFlagSpawn(area.getMin());
         }
         for (Area area : areasFile.find("merchant")) {
             if (area.getName() == null) {
-                plugin().getLogger().severe("Merchant without name: " + area);
+                plugin.getLogger().severe("Merchant without name: " + area);
                 continue;
             }
             RecipeType type = RecipeType.of(area.getName());
             if (type == null) {
-                plugin().getLogger().severe("Merchant with invalid type: " + area.getName());
+                plugin.getLogger().severe("Merchant with invalid type: " + area.getName());
                 continue;
             }
             merchantBlocks.add(new MerchantBlock(area.getMin(), type));
@@ -294,7 +295,7 @@ public final class Game {
         for (RecipeType type : RecipeType.values()) {
             int count = merchantCounts.getOrDefault(type, 0);
             if (count == 0) {
-                plugin().getLogger().severe("Merchant missing: " + type);
+                plugin.getLogger().severe("Merchant missing: " + type);
             } else {
                 log("Merchant " + type + ": " + count);
             }
@@ -312,7 +313,7 @@ public final class Game {
             }
         }
         for (Vec2i vec : vecs) {
-            world.getChunkAtAsync(vec.x, vec.z, (Consumer<Chunk>) chunk -> chunk.addPluginChunkTicket(plugin()));
+            world.getChunkAtAsync(vec.x, vec.z, (Consumer<Chunk>) chunk -> chunk.addPluginChunkTicket(plugin));
         }
     }
 
@@ -351,7 +352,7 @@ public final class Game {
     }
 
     private void makeTeams() {
-        for (Player player : Bukkit.getOnlinePlayers()) {
+        for (Player player : plugin.getLobby().getPlayers()) {
             if (player.getGameMode() == GameMode.SPECTATOR) continue;
             GamePlayer gp = new GamePlayer(player);
             playerMap.put(gp.getUuid(), gp);
@@ -368,17 +369,41 @@ public final class Game {
         }
         for (GamePlayer gp : gpList) {
             Player player = gp.getPlayer();
-            player.getInventory().clear();
-            player.getEnderChest().clear();
-            player.setHealth(20.0);
-            player.setFoodLevel(20);
-            player.setSaturation(20f);
-            player.setFireTicks(0);
-            player.setFallDistance(0f);
-            player.setGameMode(GameMode.ADVENTURE);
-            teleportToSpawn(player);
+            bringPlayer(player);
         }
         buildWorld.announceMap(world);
+    }
+
+    /**
+     * Add late joining player.
+     */
+    public void addPlayer(Player player) {
+        GameTeam theTeam = null;
+        int minMemberCount = 0;
+        for (GameTeam team : teamMap.values()) {
+            if (theTeam == null || team.getMemberCount() < minMemberCount) {
+                theTeam = team;
+                minMemberCount = team.getMemberCount();
+            }
+        }
+        final GamePlayer gp = new GamePlayer(player);
+        playerMap.put(gp.getUuid(), gp);
+        gp.setGameTeam(theTeam);
+        theTeam.getMembers().add(gp.getUuid());
+        bringPlayer(player);
+        TitlePlugin.getInstance().setColor(player, theTeam.getTeam().getTextColor());
+    }
+
+    public void bringPlayer(Player player) {
+        player.getInventory().clear();
+        player.getEnderChest().clear();
+        player.setHealth(20.0);
+        player.setFoodLevel(20);
+        player.setSaturation(20f);
+        player.setFireTicks(0);
+        player.setFallDistance(0f);
+        player.setGameMode(GameMode.ADVENTURE);
+        teleportToSpawn(player);
     }
 
     public GameTeam getTeam(Player player) {
@@ -512,7 +537,7 @@ public final class Game {
             MapReview.start(world, buildWorld).remindAll();
             for (GamePlayer gamePlayer : playerMap.values()) {
                 if (gamePlayer.getMoney() <= 0) continue;
-                Money.get().give(gamePlayer.getUuid(), (double) gamePlayer.getMoney(), plugin(), "Capture the Flag");
+                Money.get().give(gamePlayer.getUuid(), (double) gamePlayer.getMoney(), plugin, "Capture the Flag");
                 final Player player = gamePlayer.getPlayer();
                 if (player != null) {
                     player.sendMessage(textOfChildren(text("You received "), Money.get().toComponent((double) gamePlayer.getMoney()))
@@ -593,6 +618,7 @@ public final class Game {
         player.setSaturation(20f);
         player.setFireTicks(0);
         player.setFallDistance(0f);
+        TitlePlugin.getInstance().setColor(player, gamePlayer.getTeam().getTextColor());
     }
 
     public void onEntityDeath(EntityDeathEvent event) {
@@ -1094,7 +1120,7 @@ public final class Game {
             final boolean fire = true;
             final boolean breakBlocks = true;
             log(String.format("%s triggered land mine at %d,%d,%d", player.getName(), block.getX(), block.getY(), block.getZ()));
-            Bukkit.getScheduler().runTask(plugin(), () -> block.getWorld().createExplosion(loc, power, fire, breakBlocks));
+            Bukkit.getScheduler().runTask(plugin, () -> block.getWorld().createExplosion(loc, power, fire, breakBlocks));
         }
     }
 

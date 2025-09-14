@@ -46,4 +46,8 @@ public final class GameTeam {
         gameFlag.disable();
         gameFlag = null;
     }
+
+    public int getMemberCount() {
+        return members.size();
+    }
 }

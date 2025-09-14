@@ -11,7 +11,6 @@ import com.cavetale.mytems.util.Gui;
 import com.winthier.creative.BuildWorld;
 import com.winthier.creative.vote.MapVote;
 import java.util.List;
-import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -44,6 +43,10 @@ public final class CaptureTheFlagAdminCommand extends AbstractCommand<CaptureThe
             .completers(CommandArgCompleter.BOOLEAN)
             .description("Set event mode")
             .senderCaller(this::event);
+        rootNode.addChild("pause").arguments("[true|false]")
+            .completers(CommandArgCompleter.BOOLEAN)
+            .description("Set pause mode")
+            .senderCaller(this::pause);
         // Score
         CommandNode scoreNode = rootNode.addChild("score")
             .description("Score commands");
@@ -123,7 +126,7 @@ public final class CaptureTheFlagAdminCommand extends AbstractCommand<CaptureThe
     private void startVote(CommandSender sender) {
         MapVote.start(MinigameMatchType.CAPTURE_THE_FLAG, v -> {
                 v.setTitle(Games.TITLE);
-                v.setLobbyWorld(Bukkit.getWorlds().get(0));
+                v.setLobbyWorld(plugin.getLobby().getWorld());
                 v.setCallback(result -> {
                         games().startGame(result.getBuildWorldWinner(), result.getLocalWorldCopy());
                     });
@@ -157,6 +160,22 @@ public final class CaptureTheFlagAdminCommand extends AbstractCommand<CaptureThe
         } else if (args.length == 0) {
             boolean value = games().getSave().isEvent();
             sender.sendMessage(text("Event mode: " + value, value ? AQUA : RED));
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private boolean pause(CommandSender sender, String[] args) {
+        if (args.length == 1) {
+            boolean value = CommandArgCompleter.requireBoolean(args[0]);
+            games().getSave().setPause(value);
+            games().save();
+            sender.sendMessage(text("Pause mode: " + value, value ? AQUA : RED));
+            return true;
+        } else if (args.length == 0) {
+            boolean value = games().getSave().isPause();
+            sender.sendMessage(text("Pause mode: " + value, value ? AQUA : RED));
             return true;
         } else {
             return false;

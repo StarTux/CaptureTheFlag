@@ -1,15 +1,11 @@
 package com.cavetale.capturetheflag;
 
 import com.cavetale.core.event.hud.PlayerHudEvent;
-import com.cavetale.core.event.hud.PlayerHudPriority;
 import com.cavetale.core.event.player.PlayerTPAEvent;
 import com.cavetale.core.event.player.PlayerTeamQuery;
-import java.util.ArrayList;
 import java.util.List;
-import net.kyori.adventure.text.Component;
+import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
-import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.EntityType;
@@ -35,12 +31,13 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
-import org.spigotmc.event.player.PlayerSpawnLocationEvent;
-import static com.cavetale.capturetheflag.Games.games;
 
-public final class EventListener implements Listener {
+@RequiredArgsConstructor
+public final class GameListener implements Listener {
+    private final CaptureTheFlagPlugin plugin;
+
     public void enable() {
-        Bukkit.getPluginManager().registerEvents(this, CaptureTheFlagPlugin.plugin());
+        Bukkit.getPluginManager().registerEvents(this, plugin);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
@@ -49,14 +46,11 @@ public final class EventListener implements Listener {
         if (Game.applyGameIn(player.getWorld(), game -> game.onPlayerJoin(event))) {
             return;
         }
-        player.setGameMode(GameMode.ADVENTURE);
-        player.getInventory().clear();
-        player.getEnderChest().clear();
-        player.setHealth(20.0);
-        player.setFoodLevel(20);
-        player.setSaturation(20f);
-        player.setFireTicks(0);
-        player.setFallDistance(0f);
+        // Not in a game
+        if (plugin.getGames().getSave().isEvent() && !plugin.getGames().isEmpty()) {
+            final Game game = plugin.getGames().getAnyGame();
+            game.addPlayer(player);
+        }
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
@@ -65,17 +59,9 @@ public final class EventListener implements Listener {
 
     @EventHandler
     private void onPlayerHud(PlayerHudEvent event) {
-        Game game = Game.of(event.getPlayer());
-        if (game != null) {
-            game.onPlayerHud(event);
-        } else {
-            List<Component> sidebar = new ArrayList<>();
-            sidebar.add(Games.TITLE);
-            if (games().getSave().isEvent()) {
-                sidebar.addAll(games().getHighscoreLines());
-            }
-            event.sidebar(PlayerHudPriority.HIGH, sidebar);
-        }
+        final Game game = Game.of(event.getPlayer());
+        if (game == null) return;
+        game.onPlayerHud(event);
     }
 
     @EventHandler
@@ -134,17 +120,6 @@ public final class EventListener implements Listener {
             GameTeam team = game.getTeam(player);
             if (team == null) continue;
             query.setTeam(player, team.getCoreTeam());
-        }
-    }
-
-    @EventHandler
-    private void onPlayerSpawnLocation(PlayerSpawnLocationEvent event) {
-        Location old = event.getSpawnLocation();
-        if (old.getWorld().equals(Bukkit.getWorlds().get(0))) {
-            event.setSpawnLocation(old.getWorld().getSpawnLocation());
-            for (Game game : games().getGameMap().values()) {
-                event.setSpawnLocation(game.getWorld().getSpawnLocation());
-            }
         }
     }
 

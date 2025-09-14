@@ -8,6 +8,7 @@ import lombok.Data;
 @Data
 public final class Save {
     private boolean event;
+    private boolean pause;
     private boolean debug;
     private Map<UUID, Integer> scores = new HashMap<>();
 

@@ -1,14 +1,17 @@
 package com.cavetale.capturetheflag;
 
+import lombok.Getter;
 import org.bukkit.plugin.java.JavaPlugin;
 
+@Getter
 public final class CaptureTheFlagPlugin extends JavaPlugin {
-    protected static CaptureTheFlagPlugin instance;
-    protected final CaptureTheFlagCommand captureTheFlagCommand = new CaptureTheFlagCommand(this);
-    protected final CaptureTheFlagAdminCommand captureTheFlagAdminCommand = new CaptureTheFlagAdminCommand(this);
-    protected final EventListener eventListener = new EventListener();
-    protected final Games games = new Games();
-    protected final Items items = new Items();
+    private static CaptureTheFlagPlugin instance;
+    private final CaptureTheFlagCommand captureTheFlagCommand = new CaptureTheFlagCommand(this);
+    private final CaptureTheFlagAdminCommand captureTheFlagAdminCommand = new CaptureTheFlagAdminCommand(this);
+    private final GameListener gameListener = new GameListener(this);
+    private final Games games = new Games(this);
+    private final Items items = new Items();
+    private final Lobby lobby = new Lobby(this);
 
     public CaptureTheFlagPlugin() {
         instance = this;
@@ -18,9 +21,10 @@ public final class CaptureTheFlagPlugin extends JavaPlugin {
     public void onEnable() {
         captureTheFlagCommand.enable();
         captureTheFlagAdminCommand.enable();
-        eventListener.enable();
+        gameListener.enable();
         games.enable();
         items.enable();
+        lobby.enable();
     }
 
     @Override
